@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HelpCircle, MessageCircle } from "lucide-react";
 import QRCode from "qrcode";
 import { buildPixPayload } from "@/lib/pix";
 import { formatMoneyFromCents, normalizePhone } from "@/lib/format";
@@ -15,6 +16,9 @@ type Campaign = {
   pix_receiver_name: string;
   pix_city: string;
   data_consent_text: string;
+  status?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
 };
 
 type NumberItem = { number: number; status: string; buyer_display_name: string | null };
@@ -32,6 +36,14 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [result, setResult] = useState<{ token: string; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
+
+  const isOpen = useMemo(() => {
+    if (campaign.status && campaign.status !== "active") return false;
+    const now = Date.now();
+    const starts = campaign.starts_at ? new Date(campaign.starts_at).getTime() : null;
+    const ends = campaign.ends_at ? new Date(campaign.ends_at).getTime() : null;
+    return (!starts || now >= starts) && (!ends || now <= ends);
+  }, [campaign.ends_at, campaign.starts_at, campaign.status]);
 
   const totalCents = useMemo(() => {
     const numberAmount = selectedNumbers.length * campaign.number_price_cents;
@@ -84,6 +96,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     setError(null);
     setResult(null);
 
+    if (!isOpen) return setError("Esta campanha ainda não está aberta ou já foi encerrada.");
     if (totalCents <= 0) return setError("Escolha pelo menos um número ou uma cota solidária.");
     if (!name.trim()) return setError("Informe seu nome.");
     if (normalizePhone(phone).length < 10) return setError("Informe um celular válido com DDD.");
@@ -121,6 +134,25 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       <h2 className="text-2xl font-black text-[var(--brand-dark)]">Participe da ação</h2>
       <p className="mt-2 text-[var(--muted)]">Escolha números disponíveis e/ou cotas “1 kg de amor”. Depois faça o Pix e envie o comprovante.</p>
 
+      <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4 text-sm leading-6 text-[var(--brand-dark)]">
+        <div className="flex gap-3">
+          <HelpCircle className="mt-1 h-5 w-5 shrink-0" />
+          <div>
+            <p className="font-extrabold">Como funciona</p>
+            <p className="mt-1">1) Escolha um ou mais números disponíveis e/ou cotas. 2) Confira o valor total. 3) Faça o Pix usando o QR Code ou o copia e cola. 4) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação.</p>
+            <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle." target="_blank" rel="noreferrer">
+              <MessageCircle className="h-4 w-4" /> Preciso de ajuda pelo WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {!isOpen ? (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          Esta campanha não está aberta para novas aquisições neste momento.
+        </div>
+      ) : null}
+
       <div className="mt-6">
         <h3 className="font-extrabold text-[var(--brand-dark)]">1. Escolha seus números</h3>
         <p className="mt-1 text-sm text-[var(--muted)]">Cada número: {formatMoneyFromCents(campaign.number_price_cents)}</p>
@@ -131,7 +163,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
               type="button"
               onClick={() => toggleNumber(item)}
               className={`number-button ${selectedNumbers.includes(item.number) ? "selected" : ""} ${item.status === "confirmed" ? "confirmed unavailable" : ""} ${item.status !== "available" && item.status !== "confirmed" ? "pending unavailable" : ""}`}
-              disabled={item.status !== "available"}
+              disabled={!isOpen || item.status !== "available"}
               title={item.buyer_display_name || undefined}
             >
               {item.number.toString().padStart(2, "0")}
@@ -150,7 +182,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
               <p className="mt-1 text-sm text-[var(--muted)]">{quota.description}</p>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <strong>{formatMoneyFromCents(quota.amount_cents)}</strong>
-                <select className="input max-w-24" value={selectedQuotas[quota.id] || 0} onChange={(e) => updateQuota(quota.id, Number(e.target.value))}>
+                <select className="input max-w-24" disabled={!isOpen} value={selectedQuotas[quota.id] || 0} onChange={(e) => updateQuota(quota.id, Number(e.target.value))}>
                   {[0, 1, 2, 3, 4, 5, 10].map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
               </div>
@@ -189,8 +221,8 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         <h3 className="font-extrabold text-[var(--brand-dark)]">3. Faça o Pix</h3>
         <p className="mt-2 text-sm text-[var(--muted)]">Chave Pix: <strong>{campaign.pix_key}</strong></p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <button type="button" className="btn-secondary" onClick={generateQr} disabled={totalCents <= 0}>Gerar QR Code</button>
-          <button type="button" className="btn-primary" onClick={copyPix} disabled={totalCents <= 0}>Copiar Pix copia e cola</button>
+          <button type="button" className="btn-secondary" onClick={generateQr} disabled={!isOpen || totalCents <= 0}>Gerar QR Code</button>
+          <button type="button" className="btn-primary" onClick={copyPix} disabled={!isOpen || totalCents <= 0}>Copiar Pix copia e cola</button>
         </div>
         {qrCode ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -200,7 +232,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
 
       <div className="mt-5">
         <label className="label">4. Envie o comprovante do Pix *</label>
-        <input className="input" type="file" accept="image/*,.pdf" onChange={(e) => setProof(e.target.files?.[0] || null)} />
+        <input className="input" type="file" accept="image/*,.pdf" disabled={!isOpen} onChange={(e) => setProof(e.target.files?.[0] || null)} />
       </div>
 
       {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}
@@ -211,7 +243,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         </div>
       ) : null}
 
-      <button type="button" className="btn-primary mt-5" onClick={submit} disabled={loading}>
+      <button type="button" className="btn-primary mt-5" onClick={submit} disabled={loading || !isOpen}>
         {loading ? "Enviando..." : "Finalizar participação"}
       </button>
     </div>

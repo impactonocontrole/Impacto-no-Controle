@@ -51,9 +51,19 @@ export default async function CampaignPage({ params }: PageProps) {
               )}
             </div>
             <div className="p-5">
+              {campaign.client_logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={campaign.client_logo_url} alt={campaign.client_name} className="mb-4 h-16 w-16 rounded-2xl border border-[var(--border)] bg-white object-contain p-1" />
+              ) : null}
               <span className="badge">{campaign.client_name}</span>
               <h1 className="mt-3 text-3xl font-black leading-tight text-[var(--brand-dark)] md:text-4xl">{campaign.title}</h1>
               <p className="mt-3 leading-7 text-[var(--muted)]">{campaign.story}</p>
+              {campaign.regulation_text ? (
+                <details className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-4 text-sm leading-6 text-[var(--muted)]">
+                  <summary className="cursor-pointer font-extrabold text-[var(--brand-dark)]">Regras e observações da ação</summary>
+                  <p className="mt-2 whitespace-pre-line">{campaign.regulation_text}</p>
+                </details>
+              ) : null}
               <div className="mt-5 rounded-2xl bg-[#f7f2e4] p-4">
                 <p className="text-sm font-bold text-[var(--brand-dark)]">Prêmio / reconhecimento da ação</p>
                 <p className="mt-1 font-extrabold">{campaign.prize_title}</p>

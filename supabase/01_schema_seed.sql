@@ -309,6 +309,9 @@ select
   ca.client_id,
   cl.name as client_name,
   cl.slug as client_slug,
+  cl.logo_url as client_logo_url,
+  cl.primary_color as client_primary_color,
+  cl.secondary_color as client_secondary_color,
   ca.slug,
   ca.type,
   ca.title,
@@ -444,6 +447,7 @@ on conflict (id) do update set public = excluded.public, file_size_limit = exclu
 insert into public.clients (
   name,
   slug,
+  logo_url,
   primary_color,
   secondary_color,
   pix_key,
@@ -455,6 +459,7 @@ insert into public.clients (
 ) values (
   'Sementinha Petz / Tucxa',
   'sementinha-petz',
+  '/images/logo-sementinha-petz.jpeg',
   '#2f5d3a',
   '#d6a84f',
   '58.392.598/0001-91',
@@ -474,6 +479,8 @@ insert into public.campaigns (
   story,
   prize_title,
   prize_description,
+  prize_image_url,
+  main_image_url,
   status,
   target_amount_cents,
   extended_amount_cents,
@@ -491,11 +498,13 @@ select
   cl.id,
   'sao-francisco-em-racao',
   'numbers_quotas',
-  'São Francisco em Ração',
-  'Transforme uma imagem de São Francisco em alimento real para cães e gatos.',
+  'São Francisco em Ação',
+  '40 kg de amor: transforme uma imagem de São Francisco em alimento real para cães e gatos.',
   'A imagem de São Francisco foi doada pela Claudia, da corrente. A proposta é transformar essa doação em ração para cães e gatos, com transparência, carinho e prestação de contas para todos que participarem.',
   'Imagem de São Francisco',
   'Ao participar da ação com números, você concorre à imagem de São Francisco doada pela Claudia. Mais do que o prêmio, o objetivo é alimentar cães e gatos que precisam.',
+  '/images/sao-francisco.jpeg',
+  '/images/sao-francisco.jpeg',
   'active',
   65000,
   80000,
@@ -522,19 +531,19 @@ select ca.id, '10 kg de amor', 'Cota especial para padrinhos da ração.', 15000
 
 insert into public.message_templates (campaign_id, channel, purpose, title, body, sort_order)
 select ca.id, 'whatsapp', 'launch', 'Mensagem de lançamento',
-'Pessoal, estamos iniciando a ação São Francisco em Ração 🐾\n\nA imagem de São Francisco foi doada pela Claudia e queremos transformar essa doação em ração para cães e gatos.\n\nCada número custa R$ 10, e também é possível ajudar com cotas “1 kg de amor”. A meta ideal é chegar em R$ 650, o que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.\n\nQuem puder participar, escolha seus números ou uma cota pela página da ação. O Pix é conferido pela organização antes da confirmação.\n\nMais do que concorrer ao prêmio, a ideia é transformar carinho em alimento real.', 1
+'Pessoal, estamos iniciando a ação São Francisco em Ação 🐾\n\nA imagem de São Francisco foi doada pela Claudia e queremos transformar essa doação em ração para cães e gatos.\n\nCada número custa R$ 10, e também é possível ajudar com cotas “1 kg de amor”. A meta ideal é chegar em R$ 650, o que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.\n\nQuem puder participar, escolha seus números ou uma cota pela página da ação. O Pix é conferido pela organização antes da confirmação.\n\nMais do que concorrer ao prêmio, a ideia é transformar carinho em alimento real.', 1
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
 select ca.id, 'whatsapp', 'progress', 'Mensagem de andamento',
-'Atualização da ação São Francisco em Ração 🐾\n\nJá arrecadamos R$ [VALOR], o que representa aproximadamente [KG] kg de ração para cães e gatos.\n\nFaltam R$ [FALTA] para bater a meta ideal. Quem ainda quiser participar pode escolher um número ou doar uma cota “1 kg de amor”.\n\nObrigado a todos que já ajudaram. A prestação de contas será compartilhada ao final.', 2
+'Atualização da ação São Francisco em Ação 🐾\n\nJá arrecadamos R$ [VALOR], o que representa aproximadamente [KG] kg de ração para cães e gatos.\n\nFaltam R$ [FALTA] para bater a meta ideal. Quem ainda quiser participar pode escolher um número ou doar uma cota “1 kg de amor”.\n\nObrigado a todos que já ajudaram. A prestação de contas será compartilhada ao final.', 2
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
 select ca.id, 'whatsapp', 'last_call', 'Última chamada',
-'Última chamada para a ação São Francisco em Ração 🐾\n\nEstamos perto de fechar a campanha. Ainda dá tempo de escolher um número ou contribuir com uma cota “1 kg de amor”.\n\nCada participação ajuda a transformar a imagem de São Francisco em ração para cães e gatos. Quem puder, participe e compartilhe com alguém que também ame essa causa.', 3
+'Última chamada para a ação São Francisco em Ação 🐾\n\nEstamos perto de fechar a campanha. Ainda dá tempo de escolher um número ou contribuir com uma cota “1 kg de amor”.\n\nCada participação ajuda a transformar a imagem de São Francisco em ração para cães e gatos. Quem puder, participe e compartilhe com alguém que também ame essa causa.', 3
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
 select ca.id, 'whatsapp', 'accountability', 'Prestação de contas',
-'Prestação de contas da ação São Francisco em Ração 🐾\n\nArrecadamos R$ [VALOR_FINAL] e isso foi transformado em [KG_FINAL] kg de ração para cães e gatos.\n\nNossa gratidão a todos que participaram, divulgaram e ajudaram. A imagem de São Francisco cumpriu seu propósito: virar alimento, cuidado e amor em ação.', 4
+'Prestação de contas da ação São Francisco em Ação 🐾\n\nArrecadamos R$ [VALOR_FINAL] e isso foi transformado em [KG_FINAL] kg de ração para cães e gatos.\n\nNossa gratidão a todos que participaram, divulgaram e ajudaram. A imagem de São Francisco cumpriu seu propósito: virar alimento, cuidado e amor em ação.', 4
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao';
 
 -- VINCULAR USUÁRIO ADMIN ------------------------------------------------------
@@ -546,3 +555,14 @@ select u.id, null, 'owner', 'Impacto no Controle', 'impactonocontrole@gmail.com'
 from auth.users u
 where u.email = 'impactonocontrole@gmail.com'
 on conflict (auth_user_id) do update set role = excluded.role, name = excluded.name, email = excluded.email;
+
+-- VINCULAR USUÁRIO CLIENTE SEMENTINHA PETZ -----------------------------------
+-- 1) No Supabase, crie o usuário sementinhapetz@gmail.com em Authentication > Users.
+-- 2) Rode este bloco para vincular o login ao cliente Sementinha Petz / Tucxa.
+insert into public.app_users (auth_user_id, client_id, role, name, email)
+select u.id, cl.id, 'client_admin', 'Sementinha Petz', 'sementinhapetz@gmail.com'
+from auth.users u
+cross join public.clients cl
+where u.email = 'sementinhapetz@gmail.com'
+  and cl.slug = 'sementinha-petz'
+on conflict (auth_user_id) do update set client_id = excluded.client_id, role = excluded.role, name = excluded.name, email = excluded.email;

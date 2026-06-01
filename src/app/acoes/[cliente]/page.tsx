@@ -23,6 +23,10 @@ export default async function ClientActionsPage({ params }: PageProps) {
       <PublicHeader />
       <main className="container-page py-8">
         <div className="card p-6">
+          {client.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={client.logo_url} alt={client.name} className="mb-4 h-20 w-20 rounded-2xl border border-[var(--border)] bg-white object-contain p-1" />
+          ) : null}
           <span className="badge">Ações solidárias</span>
           <h1 className="mt-3 text-3xl font-black text-[var(--brand-dark)]">{client.name}</h1>
           <p className="mt-2 text-[var(--muted)]">Escolha uma ação para participar ou acompanhar.</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { formatMoneyFromCents, kgFromAmount } from "@/lib/format";
@@ -10,24 +10,88 @@ type CampaignDetail = {
   contributions: any[];
   numbers: any[];
   messages: any[];
+  quotas: any[];
   stats: any;
 };
+
+const statusOptions = [
+  ["draft", "Rascunho"],
+  ["active", "Ativa"],
+  ["paused", "Pausada"],
+  ["closed", "Encerrada"],
+  ["accountability_published", "Prestação publicada"],
+];
+
+function centsToMoneyInput(cents: number | null | undefined) {
+  return ((cents || 0) / 100).toFixed(2);
+}
+
+function moneyInputToCents(value: string) {
+  const normalized = value.replace(/\./g, "").replace(",", ".");
+  return Math.round((Number(normalized) || 0) * 100);
+}
+
+function toDateTimeLocal(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function toIsoOrNull(value: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
 
 export function CampaignDetailClient({ id }: { id: string }) {
   const supabase = createSupabaseBrowserClient();
   const [detail, setDetail] = useState<CampaignDetail | null>(null);
+  const [form, setForm] = useState<Record<string, any>>({});
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
+  const [saving, setSaving] = useState(false);
 
   async function token() {
     const { data } = await supabase.auth.getSession();
     return data.session?.access_token || "";
   }
 
+  function hydrateForm(campaign: any) {
+    setForm({
+      title: campaign.title || "",
+      subtitle: campaign.subtitle || "",
+      story: campaign.story || "",
+      prize_title: campaign.prize_title || "",
+      prize_description: campaign.prize_description || "",
+      main_image_url: campaign.main_image_url || "",
+      prize_image_url: campaign.prize_image_url || "",
+      starts_at: toDateTimeLocal(campaign.starts_at),
+      ends_at: toDateTimeLocal(campaign.ends_at),
+      status: campaign.status || "draft",
+      target_amount: centsToMoneyInput(campaign.target_amount_cents),
+      extended_amount: centsToMoneyInput(campaign.extended_amount_cents),
+      impact_unit: campaign.impact_unit || "kg de ração",
+      impact_value: centsToMoneyInput(campaign.impact_value_cents),
+      number_count: campaign.number_count || 0,
+      number_price: centsToMoneyInput(campaign.number_price_cents),
+      pix_key: campaign.pix_key || "",
+      pix_receiver_name: campaign.pix_receiver_name || "",
+      pix_city: campaign.pix_city || "Campinas",
+      regulation_text: campaign.regulation_text || "",
+      data_consent_text: campaign.data_consent_text || "",
+      show_buyer_names: campaign.show_buyer_names ?? true,
+      reservation_minutes: campaign.reservation_minutes || 1440,
+    });
+  }
+
   async function load() {
     if (!id) return;
     setLoading(true);
+    setError(null);
     const accessToken = await token();
     if (!accessToken) {
       setError("Faça login para acessar a gestão.");
@@ -37,11 +101,62 @@ export function CampaignDetailClient({ id }: { id: string }) {
     const res = await fetch(`/api/admin/campaigns/${id}`, { headers: { Authorization: `Bearer ${accessToken}` } });
     const json = await res.json();
     if (!res.ok) setError(json.error || "Erro ao carregar campanha.");
-    else setDetail(json);
+    else {
+      setDetail(json);
+      hydrateForm(json.campaign);
+    }
     setLoading(false);
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
+
+  function setField(field: string, value: any) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveConfig() {
+    setError(null);
+    setSuccess(null);
+    setSaving(true);
+    const accessToken = await token();
+    const payload = {
+      title: form.title,
+      subtitle: form.subtitle,
+      story: form.story,
+      prize_title: form.prize_title,
+      prize_description: form.prize_description,
+      main_image_url: form.main_image_url,
+      prize_image_url: form.prize_image_url,
+      starts_at: toIsoOrNull(form.starts_at),
+      ends_at: toIsoOrNull(form.ends_at),
+      status: form.status,
+      target_amount_cents: moneyInputToCents(form.target_amount),
+      extended_amount_cents: moneyInputToCents(form.extended_amount),
+      impact_unit: form.impact_unit,
+      impact_value_cents: moneyInputToCents(form.impact_value),
+      number_count: Number(form.number_count || 0),
+      number_price_cents: moneyInputToCents(form.number_price),
+      pix_key: form.pix_key,
+      pix_receiver_name: form.pix_receiver_name,
+      pix_city: form.pix_city,
+      regulation_text: form.regulation_text,
+      data_consent_text: form.data_consent_text,
+      show_buyer_names: Boolean(form.show_buyer_names),
+      reservation_minutes: Number(form.reservation_minutes || 1440),
+    };
+    const res = await fetch(`/api/admin/campaigns/${id}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok) setError(json.error || "Erro ao salvar configurações.");
+    else {
+      setSuccess("Configurações salvas com sucesso.");
+      await load();
+    }
+    setSaving(false);
+  }
 
   async function approve(contributionId: string) {
     const accessToken = await token();
@@ -72,17 +187,26 @@ export function CampaignDetailClient({ id }: { id: string }) {
     window.open(json.url, "_blank");
   }
 
+  const isOpen = useMemo(() => {
+    if (!detail?.campaign || detail.campaign.status !== "active") return false;
+    const now = Date.now();
+    const starts = detail.campaign.starts_at ? new Date(detail.campaign.starts_at).getTime() : null;
+    const ends = detail.campaign.ends_at ? new Date(detail.campaign.ends_at).getTime() : null;
+    return (!starts || now >= starts) && (!ends || now <= ends);
+  }, [detail]);
+
   return (
     <AdminShell>
       {loading ? <p>Carregando...</p> : null}
-      {error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}
+      {error ? <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}
+      {success ? <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-800">{success}</div> : null}
       {detail ? (
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <span className="badge">{detail.campaign.client_name}</span>
               <h1 className="mt-2 text-3xl font-black text-[var(--brand-dark)]">{detail.campaign.title}</h1>
-              <p className="mt-1 text-[var(--muted)]">/{detail.campaign.slug}</p>
+              <p className="mt-1 text-[var(--muted)]">/{detail.campaign.slug} • {isOpen ? "Aquisições abertas" : "Aquisições fechadas ou fora do período"}</p>
             </div>
             <a className="btn-secondary !w-auto" href={`/acao/${detail.campaign.slug}`} target="_blank">Página pública</a>
           </div>
@@ -93,6 +217,40 @@ export function CampaignDetailClient({ id }: { id: string }) {
             <div className="card p-4"><p className="text-sm text-[var(--muted)]">Kg estimados</p><strong className="text-2xl">{kgFromAmount(detail.stats?.confirmed_amount_cents || 0, detail.campaign.impact_value_cents)} kg</strong></div>
             <div className="card p-4"><p className="text-sm text-[var(--muted)]">Meta</p><strong className="text-2xl">{formatMoneyFromCents(detail.campaign.target_amount_cents)}</strong></div>
           </div>
+
+          <section className="card mt-6 p-5">
+            <h2 className="text-2xl font-black text-[var(--brand-dark)]">Configurações da campanha</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Estas informações controlam o que aparece na página pública e o período em que as pessoas podem adquirir números ou cotas.</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div><label className="label">Título</label><input className="input" value={form.title || ""} onChange={(e) => setField("title", e.target.value)} /></div>
+              <div><label className="label">Status</label><select className="input" value={form.status || "draft"} onChange={(e) => setField("status", e.target.value)}>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+              <div className="md:col-span-2"><label className="label">Subtítulo</label><input className="input" value={form.subtitle || ""} onChange={(e) => setField("subtitle", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="label">História da causa</label><textarea className="input min-h-28" value={form.story || ""} onChange={(e) => setField("story", e.target.value)} /></div>
+              <div><label className="label">Início das aquisições</label><input className="input" type="datetime-local" value={form.starts_at || ""} onChange={(e) => setField("starts_at", e.target.value)} /></div>
+              <div><label className="label">Término das aquisições</label><input className="input" type="datetime-local" value={form.ends_at || ""} onChange={(e) => setField("ends_at", e.target.value)} /></div>
+              <div><label className="label">Meta ideal (R$)</label><input className="input" value={form.target_amount || ""} onChange={(e) => setField("target_amount", e.target.value)} /></div>
+              <div><label className="label">Meta estendida (R$)</label><input className="input" value={form.extended_amount || ""} onChange={(e) => setField("extended_amount", e.target.value)} /></div>
+              <div><label className="label">Unidade de impacto</label><input className="input" value={form.impact_unit || ""} onChange={(e) => setField("impact_unit", e.target.value)} /></div>
+              <div><label className="label">Valor estimado por unidade (R$)</label><input className="input" value={form.impact_value || ""} onChange={(e) => setField("impact_value", e.target.value)} /></div>
+              <div><label className="label">Quantidade de números</label><input className="input" type="number" value={form.number_count || 0} onChange={(e) => setField("number_count", e.target.value)} /></div>
+              <div><label className="label">Valor por número (R$)</label><input className="input" value={form.number_price || ""} onChange={(e) => setField("number_price", e.target.value)} /></div>
+              <div><label className="label">Chave Pix</label><input className="input" value={form.pix_key || ""} onChange={(e) => setField("pix_key", e.target.value)} /></div>
+              <div><label className="label">Nome do recebedor Pix</label><input className="input" value={form.pix_receiver_name || ""} onChange={(e) => setField("pix_receiver_name", e.target.value)} /></div>
+              <div><label className="label">Cidade Pix</label><input className="input" value={form.pix_city || ""} onChange={(e) => setField("pix_city", e.target.value)} /></div>
+              <div><label className="label">Reserva expira em quantos minutos</label><input className="input" type="number" value={form.reservation_minutes || 1440} onChange={(e) => setField("reservation_minutes", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="label">URL da imagem principal</label><input className="input" value={form.main_image_url || ""} onChange={(e) => setField("main_image_url", e.target.value)} /></div>
+              <div><label className="label">Prêmio / reconhecimento</label><input className="input" value={form.prize_title || ""} onChange={(e) => setField("prize_title", e.target.value)} /></div>
+              <div><label className="label">URL da imagem do prêmio</label><input className="input" value={form.prize_image_url || ""} onChange={(e) => setField("prize_image_url", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="label">Descrição do prêmio</label><textarea className="input min-h-24" value={form.prize_description || ""} onChange={(e) => setField("prize_description", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="label">Regulamento / observações</label><textarea className="input min-h-24" value={form.regulation_text || ""} onChange={(e) => setField("regulation_text", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="label">Texto de consentimento</label><textarea className="input min-h-24" value={form.data_consent_text || ""} onChange={(e) => setField("data_consent_text", e.target.value)} /></div>
+              <label className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-white p-4 font-bold text-[var(--brand-dark)] md:col-span-2">
+                <input type="checkbox" checked={Boolean(form.show_buyer_names)} onChange={(e) => setField("show_buyer_names", e.target.checked)} />
+                Exibir nome abreviado abaixo dos números reservados/confirmados
+              </label>
+            </div>
+            <button className="btn-primary mt-5" onClick={saveConfig} disabled={saving}>{saving ? "Salvando..." : "Salvar configurações"}</button>
+          </section>
 
           <section className="card mt-6 p-5">
             <h2 className="text-2xl font-black text-[var(--brand-dark)]">Pagamentos e participações</h2>

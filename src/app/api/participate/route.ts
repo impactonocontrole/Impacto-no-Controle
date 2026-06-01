@@ -34,12 +34,19 @@ export async function POST(request: Request) {
 
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .select("id, client_id, slug, status, number_price_cents")
+      .select("id, client_id, slug, status, number_price_cents, starts_at, ends_at")
       .eq("slug", campaignSlug)
       .maybeSingle();
 
     if (campaignError || !campaign || campaign.status !== "active") {
       return NextResponse.json({ error: "Campanha não encontrada ou encerrada." }, { status: 404 });
+    }
+
+    const now = Date.now();
+    const startsAt = campaign.starts_at ? new Date(campaign.starts_at).getTime() : null;
+    const endsAt = campaign.ends_at ? new Date(campaign.ends_at).getTime() : null;
+    if ((startsAt && now < startsAt) || (endsAt && now > endsAt)) {
+      return NextResponse.json({ error: "Esta campanha ainda não está aberta ou já foi encerrada." }, { status: 400 });
     }
 
     const uniqueNumbers = Array.from(new Set(selectedNumbers.map(Number).filter((n) => Number.isInteger(n) && n > 0))).sort((a, b) => a - b);
