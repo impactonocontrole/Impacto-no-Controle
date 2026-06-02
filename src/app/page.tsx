@@ -30,9 +30,9 @@ export default function Home() {
           </div>
 
           <div className="card p-6">
-            <h2 className="text-2xl font-black text-[var(--brand-dark)]">Por que evita o “Mar Vermelho”?</h2>
+            <h2 className="text-2xl font-black text-[var(--brand-dark)]">O que torna o Impacto no Controle diferente?</h2>
             <p className="mt-3 leading-7 text-[var(--muted)]">
-              Em vez de ser só mais uma página de Pix, rifa ou vaquinha, o Impacto no Controle organiza a ação completa: narrativa da causa, escolha do tipo de campanha, pagamento, comprovante, aprovação, acompanhamento e prestação de contas.
+              Em vez de ser só mais uma página de Pix, rifa ou vaquinha, o Impacto no Controle organiza a ação completa: história da causa, escolha do formato, pagamento, comprovante, aprovação, acompanhamento e prestação de contas. Assim, a pessoa entende o impacto, confia no processo e participa com mais segurança.
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {[

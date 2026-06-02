@@ -37,6 +37,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
   const isOpen = useMemo(() => {
     if (campaign.status && campaign.status !== "active") return false;
@@ -87,10 +88,41 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     });
   }
 
+  async function writeToClipboard(text: string) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+
   async function copyPix() {
     if (!pixPayload) return;
-    await navigator.clipboard.writeText(pixPayload);
-    alert("Pix copia e cola copiado.");
+
+    try {
+      await writeToClipboard(pixPayload);
+      setCopyMessage("Pix copia e cola copiado. Cole no app do banco na opção Pix Copia e Cola ou QR Code.");
+    } catch {
+      setCopyMessage("Não foi possível copiar automaticamente. Copie manualmente o código Pix exibido abaixo.");
+    }
+  }
+
+  async function copyPixKey() {
+    try {
+      await writeToClipboard(campaign.pix_key.trim());
+      setCopyMessage("Chave Pix copiada.");
+    } catch {
+      setCopyMessage("Não foi possível copiar automaticamente. Copie manualmente a chave Pix exibida abaixo.");
+    }
   }
 
   async function submit() {
@@ -128,14 +160,14 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   return (
     <div className="card p-5">
       <h2 className="text-2xl font-black text-[var(--brand-dark)]">Participe da ação</h2>
-      <p className="mt-2 text-[var(--muted)]">Escolha números disponíveis e/ou cotas “1 kg de amor”. Depois faça o Pix e envie o comprovante.</p>
+      <p className="mt-2 text-[var(--muted)]">Escolha seu número para o sorteio da imagem. Depois, se desejar, aumente sua colaboração com cotas extras de amor.</p>
 
       <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4 text-sm leading-6 text-[var(--brand-dark)]">
         <div className="flex gap-3">
           <HelpCircle className="mt-1 h-5 w-5 shrink-0" />
           <div>
             <p className="font-extrabold">Como funciona</p>
-            <p className="mt-1">1) Escolha um ou mais números disponíveis e/ou cotas. 2) Confira o valor total. 3) Faça o Pix usando o QR Code ou o copia e cola. 4) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação.</p>
+            <p className="mt-1">1) Escolha um ou mais números para participar do sorteio. 2) Se quiser, aumente sua colaboração com cotas extras. 3) Confira o valor total. 4) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 5) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação.</p>
             <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle." target="_blank" rel="noreferrer">
               <MessageCircle className="h-4 w-4" /> Preciso de ajuda pelo WhatsApp
             </a>
@@ -150,8 +182,8 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       ) : null}
 
       <div className="mt-6">
-        <h3 className="font-extrabold text-[var(--brand-dark)]">1. Escolha seus números</h3>
-        <p className="mt-1 text-sm text-[var(--muted)]">Cada número: {formatMoneyFromCents(campaign.number_price_cents)}</p>
+        <h3 className="font-extrabold text-[var(--brand-dark)]">1. Escolha seus números para o sorteio da imagem</h3>
+        <p className="mt-1 text-sm text-[var(--muted)]">Cada número custa <strong>{formatMoneyFromCents(campaign.number_price_cents)}</strong>. Números claros estão disponíveis; números escuros já estão reservados ou confirmados.</p>
         <div className="mt-3 grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10">
           {numbers.map((item) => (
             <button
@@ -169,8 +201,13 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         </div>
       </div>
 
-      <div className="mt-7">
-        <h3 className="font-extrabold text-[var(--brand-dark)]">2. Cotas “1 kg de amor”</h3>
+      <div className="mt-7 border-t border-[var(--border)] pt-6">
+        <span className="badge">Colaboração extra opcional</span>
+        <h3 className="mt-3 font-extrabold text-[var(--brand-dark)]">2. Quer aumentar sua colaboração?</h3>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          A participação no sorteio da imagem é feita pelos números de <strong>{formatMoneyFromCents(campaign.number_price_cents)}</strong>.
+          As cotas abaixo são opcionais e servem para ampliar o impacto da ação, ajudando a transformar a arrecadação em mais ração para cães e gatos.
+        </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {quotas.map((quota) => (
             <div key={quota.id} className="rounded-2xl border border-[var(--border)] bg-white p-4">
@@ -216,10 +253,21 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       <div className="mt-7 rounded-2xl border border-[var(--border)] bg-white p-4">
         <h3 className="font-extrabold text-[var(--brand-dark)]">3. Faça o Pix</h3>
         <p className="mt-2 text-sm text-[var(--muted)]">Chave Pix: <strong>{campaign.pix_key}</strong></p>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+          O botão “Pix copia e cola” copia o código completo para colar no aplicativo do banco. Se preferir, use “Copiar chave Pix”.
+        </p>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row">
           <button type="button" className="btn-secondary" onClick={generateQr} disabled={!isOpen || totalCents <= 0}>Gerar QR Code</button>
           <button type="button" className="btn-primary" onClick={copyPix} disabled={!isOpen || totalCents <= 0}>Copiar Pix copia e cola</button>
+          <button type="button" className="btn-secondary" onClick={copyPixKey} disabled={!isOpen}>Copiar chave Pix</button>
         </div>
+        {copyMessage ? <p className="mt-3 rounded-2xl bg-[#eef5ec] p-3 text-sm font-bold text-[var(--brand-dark)]">{copyMessage}</p> : null}
+        {pixPayload && totalCents > 0 ? (
+          <details className="mt-3 rounded-2xl border border-[var(--border)] bg-[#fffdf7] p-3 text-sm">
+            <summary className="cursor-pointer font-extrabold text-[var(--brand-dark)]">Ver código Pix copia e cola</summary>
+            <textarea className="input mt-3 min-h-28 text-xs" readOnly value={pixPayload} />
+          </details>
+        ) : null}
         {qrCode ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-2" src={qrCode} alt="QR Code Pix" />

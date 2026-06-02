@@ -26,6 +26,25 @@ function crc16(payload: string) {
   return crc.toString(16).toUpperCase().padStart(4, "0");
 }
 
+
+function normalizePixKey(key: string) {
+  const trimmed = key.trim();
+
+  if (trimmed.includes("@")) return trimmed.toLowerCase();
+
+  if (trimmed.startsWith("+")) {
+    const digits = trimmed.replace(/\D/g, "");
+    return digits ? `+${digits}` : trimmed;
+  }
+
+  const digitsOnly = trimmed.replace(/\D/g, "");
+
+  // CPF/CNPJ are registered in Pix without punctuation in the BR Code payload.
+  if (digitsOnly.length === 11 || digitsOnly.length === 14) return digitsOnly;
+
+  return trimmed;
+}
+
 export function buildPixPayload(params: {
   key: string;
   merchantName: string;
@@ -35,7 +54,7 @@ export function buildPixPayload(params: {
   description?: string;
 }) {
   const gui = field("00", "br.gov.bcb.pix");
-  const key = field("01", params.key.trim());
+  const key = field("01", normalizePixKey(params.key));
   const desc = params.description ? field("02", sanitize(params.description, 40)) : "";
   const merchantAccount = field("26", gui + key + desc);
   const txid = field("05", sanitize(params.txid || "IMPACTO", 25));

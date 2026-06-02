@@ -1,9 +1,9 @@
 param(
-  [string]$ProjectRoot = "C:\Users\lacos\Documents\GitHub\impacto-no-controle",
+  [string]$ProjectRoot = ".",
   [string]$ZipName = "Impacto-no-Controle-ajustes-$(Get-Date -Format 'yyyyMMdd-HHmmss').zip"
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = 'Stop'
 
 $ProjectRoot = (Resolve-Path $ProjectRoot).Path
 $ZipPath = Join-Path $ProjectRoot $ZipName
@@ -18,19 +18,31 @@ New-Item -ItemType Directory -Path $TempDir | Out-Null
 $items = @(
   "package.json",
   "next.config.ts",
+  "tsconfig.json",
+  ".env.example",
+  "README.md",
 
   "src/app/layout.tsx",
   "src/app/globals.css",
   "src/app/page.tsx",
-  "src/app/acao/[slug]/page.tsx",
 
-  "src/components/PublicHeader.tsx",
-  "src/components/CampaignParticipation.tsx",
+  "src/app/acao",
+  "src/app/acoes",
+  "src/app/acompanhar",
+  "src/app/cliente",
+  "src/app/gestao",
+  "src/app/redefinir-senha",
+  "src/app/api/participate",
+  "src/app/api/track",
+  "src/app/api/admin",
 
-  "src/lib/pix.ts",
-  "src/lib/format.ts",
+  "src/components",
+  "src/lib",
 
-  "public/images"
+  "public/images",
+
+  "supabase/01_schema_seed.sql",
+  "supabase/02_ajustes_cliente_home_sao_francisco.sql"
 )
 
 foreach ($relativePath in $items) {
@@ -58,7 +70,4 @@ foreach ($relativePath in $items) {
 Compress-Archive -Path (Join-Path $TempDir '*') -DestinationPath $ZipPath -Force
 Remove-Item $TempDir -Recurse -Force
 
-Write-Host ""
-Write-Host "ZIP gerado com sucesso em:"
-Write-Host $ZipPath
-Write-Host ""
+Write-Host "ZIP gerado com sucesso: $ZipPath"
