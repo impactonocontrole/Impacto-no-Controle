@@ -68,7 +68,7 @@ async function notifyParticipantByEmail(input: {
     </div>
   `;
 
-  await sendEmail({
+  return sendEmail({
     to: input.email,
     cc: [process.env.IMPACTO_ADMIN_EMAIL || "impactonocontrole@gmail.com"],
     subject,
@@ -202,8 +202,9 @@ export async function POST(request: Request) {
       if (updateNumbersError) throw updateNumbersError;
     }
 
+    let emailStatus: { sent: boolean; skipped?: boolean; error?: string } = { sent: false };
     try {
-      await notifyParticipantByEmail({
+      const emailResult = await notifyParticipantByEmail({
         request,
         email,
         participantName: name,
@@ -214,13 +215,17 @@ export async function POST(request: Request) {
         quotas: quotaMessages,
         token: contribution.acompanhamento_token,
       });
+      emailStatus = email ? { sent: true, skipped: Boolean((emailResult as any)?.skipped) } : { sent: false, skipped: true };
     } catch (emailError) {
+      const message = emailError instanceof Error ? emailError.message : "Falha desconhecida ao enviar e-mail.";
+      emailStatus = { sent: false, error: message };
       console.warn("Falha ao enviar e-mail de participação", emailError);
     }
 
     return NextResponse.json({
       ok: true,
       token: contribution.acompanhamento_token,
+      email: emailStatus,
       message: "Participação registrada. A organização irá conferir o Pix e aprovar o pagamento.",
     });
   } catch (error) {

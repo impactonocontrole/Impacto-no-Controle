@@ -29,29 +29,37 @@ $items = @(
   "src/app/obrigado/[token]/page.tsx",
   "src/app/acompanhar/[token]/page.tsx",
 
+  "src/app/gestao/campanhas/[id]/page.tsx",
+  "src/app/gestao/campanhas/[id]/actions.ts",
+  "src/app/gestao/page.tsx",
+
   "src/app/api/participate/route.ts",
   "src/app/api/track/[token]/route.ts",
 
   "src/components/PublicHeader.tsx",
   "src/components/CampaignParticipation.tsx",
+  "src/components/admin/CampaignDetailClient.tsx",
+  "src/components/admin/DashboardClient.tsx",
 
   "src/lib/pix.ts",
   "src/lib/format.ts",
+  "src/lib/messages.ts",
+  "src/lib/email.ts",
+  "src/lib/resend.ts",
+  "src/lib/supabase",
+  "src/lib/campaigns.ts",
 
   "public/images"
 )
 
-# Itens opcionais, se existirem
 $optionalItems = @(
-  "src/lib/email.ts",
-  "src/lib/mailer.ts",
-  "src/lib/resend.ts",
+  "src/app/api/admin",
   "src/app/api/send-email",
   "src/app/head.tsx",
   "src/app/opengraph-image.tsx",
-  "src/app/opengraph-image.png",
   "src/app/acao/[slug]/opengraph-image.tsx",
-  "src/app/acao/[slug]/opengraph-image.png"
+  "supabase",
+  "scripts"
 )
 
 foreach ($relativePath in ($items + $optionalItems)) {

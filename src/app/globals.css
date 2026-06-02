@@ -145,19 +145,22 @@ table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid var(--border); padding: 12px; text-align: left; vertical-align: top; }
 th { color: var(--brand-dark); font-size: 13px; }
 
+
 .public-header {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px 14px;
 }
 
 .public-header-main {
   display: flex;
   min-width: 0;
+  flex: 1 1 520px;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .brand-link {
@@ -167,10 +170,27 @@ th { color: var(--brand-dark); font-size: 13px; }
   gap: 12px;
 }
 
-.brand-title { max-width: 260px; }
+.brand-mark {
+  display: grid;
+  height: 40px;
+  width: 40px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--brand);
+  color: white;
+}
+
+.brand-title {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 18px;
+  line-height: 1.1;
+}
 
 .header-access-nav {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
@@ -187,20 +207,6 @@ th { color: var(--brand-dark); font-size: 13px; }
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-@media (max-width: 640px) {
-  .container-page { width: min(100% - 20px, 1120px); }
-  .card { border-radius: 18px; }
-  .btn-primary, .btn-secondary { width: 100%; }
-
-  .public-header { align-items: stretch; }
-  .public-header-main { width: 100%; justify-content: space-between; gap: 8px; }
-  .brand-link { gap: 9px; min-width: 0; }
-  .brand-link > span:first-child { width: 44px; height: 44px; border-radius: 16px; }
-  .brand-title { max-width: calc(100vw - 260px); font-size: 19px; }
-  .header-access-nav { flex: 0 0 auto; gap: 6px; }
-  .header-access-button { width: auto !important; padding: 8px 10px !important; font-size: 13px; }
 }
 
 .ae-header-badge {
@@ -224,11 +230,30 @@ th { color: var(--brand-dark); font-size: 13px; }
   background: #0c3554;
 }
 
-@media (max-width: 640px) {
-  .ae-header-badge {
-    width: 100%;
-    justify-content: flex-start;
-  }
+.ae-click-hint {
+  color: var(--muted);
+  font-weight: 700;
+}
 
+@media (max-width: 640px) {
+  .container-page { width: min(100% - 20px, 1120px); }
+  .card { border-radius: 18px; }
+  .btn-primary, .btn-secondary { width: 100%; }
+
+  .public-header { align-items: stretch; gap: 8px; }
+  .public-header-main { width: 100%; flex-basis: 100%; gap: 6px; }
+  .brand-link { gap: 8px; flex: 1 1 auto; }
+  .brand-mark { width: 42px; height: 42px; border-radius: 16px; }
+  .brand-title { font-size: 15px; letter-spacing: -0.2px; }
+  .header-access-nav { gap: 5px; }
+  .header-access-button { width: auto !important; padding: 8px 9px !important; font-size: 12.5px; }
+  .ae-header-badge { width: 100%; justify-content: flex-start; gap: 7px; padding: 6px 8px; }
   .ae-header-badge img { height: 24px; }
+  .ae-click-hint { font-size: 11px; white-space: normal; line-height: 1.15; }
+}
+
+@media (max-width: 374px) {
+  .brand-title { font-size: 13.5px; }
+  .header-access-button { padding: 7px 7px !important; font-size: 12px; }
+  .brand-mark { width: 40px; height: 40px; }
 }

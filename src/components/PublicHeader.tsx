@@ -9,9 +9,9 @@ export function PublicHeader({ showAccessLinks = true }: PublicHeaderProps) {
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-white/95 backdrop-blur">
       <div className="container-page public-header py-2">
         <div className="public-header-main">
-          <Link href="/" className="brand-link font-extrabold text-[var(--brand-dark)]">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--brand)] text-white">IC</span>
-            <span className="brand-title truncate">Impacto no Controle</span>
+          <Link href="/" className="brand-link font-extrabold text-[var(--brand-dark)]" aria-label="Ir para a página inicial do Impacto no Controle">
+            <span className="brand-mark">IC</span>
+            <span className="brand-title">Impacto no Controle</span>
           </Link>
 
           {showAccessLinks ? (
@@ -28,10 +28,12 @@ export function PublicHeader({ showAccessLinks = true }: PublicHeaderProps) {
           rel="noreferrer"
           className="ae-header-badge"
           aria-label="Abrir site da Automação Extrema"
+          title="Clique no logo e conheça a Automação Extrema"
         >
-          <span>Desenvolvido por</span>
+          <span className="ae-label">Desenvolvido por</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/ae-logo.png" alt="Automação Extrema" />
+          <span className="ae-click-hint">Clique no logo e nos conheça</span>
         </a>
       </div>
     </header>

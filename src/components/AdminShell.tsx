@@ -41,7 +41,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="flex min-w-0 flex-wrap items-center gap-3">
             <Link href="/gestao" className="flex min-w-0 items-center gap-3 font-extrabold text-[var(--brand-dark)]">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--brand)] text-white">IC</span>
-              <span className="truncate">Impacto no Controle • {title}</span>
+              <span className="brand-title">Impacto no Controle • {title}</span>
             </Link>
             <a
               href="https://automacao-extrema.vercel.app/"
@@ -50,9 +50,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className="ae-header-badge"
               aria-label="Abrir site da Automação Extrema"
             >
-              <span>Desenvolvido por</span>
+              <span className="ae-label">Desenvolvido por</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/ae-logo.png" alt="Automação Extrema" />
+              <span className="ae-click-hint">Clique no logo e nos conheça</span>
             </a>
           </div>
           <nav className="flex flex-wrap gap-2 text-sm font-bold">

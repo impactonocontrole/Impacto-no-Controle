@@ -51,7 +51,7 @@ export default function CampaignsPage() {
           <h1 className="text-3xl font-black text-[var(--brand-dark)]">Campanhas</h1>
           <p className="mt-2 text-[var(--muted)]">Acompanhe arrecadação, Pix pendentes e impacto estimado.</p>
         </div>
-        <Link className="btn-secondary !w-auto" href="/acao/sao-francisco-em-racao" target="_blank">Abrir página pública</Link>
+        <Link className="btn-primary !w-auto" href="/acao/sao-francisco-em-racao" target="_blank">Abrir página pública</Link>
       </div>
 
       {loading ? <p className="mt-6">Carregando...</p> : null}

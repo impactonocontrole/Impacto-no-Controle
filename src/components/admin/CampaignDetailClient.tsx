@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { formatMoneyFromCents, kgFromAmount } from "@/lib/format";
+import { centsToMoneyInput, cleanWhatsappMessage, formatMoneyFromCents, kgFromAmount, moneyInputToCents } from "@/lib/format";
 
 type CampaignDetail = {
   campaign: any;
@@ -22,15 +22,6 @@ const statusOptions = [
   ["accountability_published", "Prestação publicada"],
 ];
 
-function centsToMoneyInput(cents: number | null | undefined) {
-  return ((cents || 0) / 100).toFixed(2);
-}
-
-function moneyInputToCents(value: string) {
-  const normalized = value.replace(/\./g, "").replace(",", ".");
-  return Math.round((Number(normalized) || 0) * 100);
-}
-
 function toDateTimeLocal(value: string | null | undefined) {
   if (!value) return "";
   const date = new Date(value);
@@ -44,6 +35,41 @@ function toIsoOrNull(value: string) {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function publicStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    draft: "Rascunho",
+    active: "Ativa",
+    paused: "Pausada",
+    closed: "Encerrada",
+    accountability_published: "Prestação publicada",
+  };
+  return labels[status] || status;
+}
+
+function campaignPublicUrl(slug: string) {
+  if (typeof window === "undefined") return `/acao/${slug}`;
+  return `${window.location.origin}/acao/${slug}`;
+}
+
+function buildCampaignMessage(body: string, campaign: any, stats: any) {
+  const publicUrl = campaignPublicUrl(campaign.slug);
+  const confirmed = Number(stats?.confirmed_amount_cents || 0);
+  const target = Number(campaign.target_amount_cents || 0);
+  const falta = Math.max(0, target - confirmed);
+  const kg = kgFromAmount(confirmed, Number(campaign.impact_value_cents || 0));
+
+  return cleanWhatsappMessage(body)
+    .replaceAll("[LINK_ACAO]", publicUrl)
+    .replaceAll("[LINK_ANDAMENTO]", publicUrl)
+    .replaceAll("[LINK_ULTIMA_CHAMADA]", publicUrl)
+    .replaceAll("[LINK_PRESTACAO]", `${publicUrl}#prestacao-de-contas`)
+    .replaceAll("[VALOR]", formatMoneyFromCents(confirmed))
+    .replaceAll("[FALTA]", formatMoneyFromCents(falta))
+    .replaceAll("[KG]", String(kg))
+    .replaceAll("[VALOR_FINAL]", formatMoneyFromCents(confirmed))
+    .replaceAll("[KG_FINAL]", String(kg));
 }
 
 export function CampaignDetailClient({ id }: { id: string }) {
@@ -231,9 +257,11 @@ export function CampaignDetailClient({ id }: { id: string }) {
             <div>
               <span className="badge">{detail.campaign.client_name}</span>
               <h1 className="mt-2 text-3xl font-black text-[var(--brand-dark)]">{detail.campaign.title}</h1>
-              <p className="mt-1 text-[var(--muted)]">/{detail.campaign.slug} • {isOpen ? "Aquisições abertas" : "Aquisições fechadas ou fora do período"}</p>
+              <p className="mt-1 text-[var(--muted)]">/{detail.campaign.slug} • Status: {publicStatusLabel(detail.campaign.status)} • {isOpen ? "Aquisições abertas" : "Aquisições fechadas ou fora do período"}</p>
             </div>
-            <a className="btn-secondary !w-auto" href={`/acao/${detail.campaign.slug}`} target="_blank">Página pública</a>
+            {detail.campaign.status !== "draft" ? (
+              <a className="btn-primary !w-auto" href={`/acao/${detail.campaign.slug}`} target="_blank">Página pública</a>
+            ) : null}
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-4">
@@ -317,13 +345,16 @@ export function CampaignDetailClient({ id }: { id: string }) {
           <section className="card mt-6 p-5">
             <h2 className="text-2xl font-black text-[var(--brand-dark)]">Mensagens prontas</h2>
             <div className="mt-4 grid gap-4">
-              {detail.messages.map((m) => (
-                <div key={m.id} className="rounded-2xl border border-[var(--border)] bg-white p-4">
-                  <p className="font-extrabold">{m.title}</p>
-                  <textarea className="input mt-2 min-h-32" readOnly value={m.body} />
-                  <button className="btn-secondary mt-2 !w-auto" onClick={() => navigator.clipboard.writeText(m.body)}>Copiar</button>
-                </div>
-              ))}
+              {detail.messages.map((m) => {
+                const preparedMessage = buildCampaignMessage(m.body, detail.campaign, detail.stats);
+                return (
+                  <div key={m.id} className="rounded-2xl border border-[var(--border)] bg-white p-4">
+                    <p className="font-extrabold">{m.title}</p>
+                    <textarea className="input mt-2 min-h-32" readOnly value={preparedMessage} />
+                    <button className="btn-primary mt-2 !w-auto" onClick={() => navigator.clipboard.writeText(preparedMessage)}>Copiar mensagem</button>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>

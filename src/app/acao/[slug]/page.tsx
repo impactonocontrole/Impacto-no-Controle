@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { formatMoneyFromCents, kgFromAmount } from "@/lib/format";
@@ -17,6 +18,31 @@ function publicRegulationText(value: string | null | undefined) {
     .trim();
 }
 
+function campaignStatusNotice(status: string) {
+  if (status === "paused") {
+    return {
+      title: "Campanha pausada no momento",
+      text: "As novas participações estão temporariamente suspensas. Para saber quando a ação será retomada ou tirar dúvidas, fale com a Automação Extrema pelo WhatsApp.",
+    };
+  }
+
+  if (status === "closed") {
+    return {
+      title: "Campanha encerrada",
+      text: "Esta ação já foi encerrada e não está recebendo novas participações. Acompanhe a prestação de contas ou fale com a organização para mais informações.",
+    };
+  }
+
+  if (status === "accountability_published") {
+    return {
+      title: "Prestação de contas publicada",
+      text: "Esta campanha foi encerrada e a prestação de contas já pode ser acompanhada pela organização. Obrigado a todos que ajudaram a transformar solidariedade em resultado real.",
+    };
+  }
+
+  return null;
+}
+
 export default async function CampaignPage({ params }: PageProps) {
   const { slug } = await params;
   const supabase = createSupabasePublicClient();
@@ -27,7 +53,7 @@ export default async function CampaignPage({ params }: PageProps) {
     .eq("slug", slug)
     .maybeSingle();
 
-  if (error || !campaign) notFound();
+  if (error || !campaign || campaign.status === "draft") notFound();
 
   const [{ data: numbers }, { data: quotas }, { data: stats }] = await Promise.all([
     supabase.from("campaign_numbers_public").select("number,status,buyer_display_name").eq("campaign_id", campaign.id).order("number"),
@@ -40,11 +66,29 @@ export default async function CampaignPage({ params }: PageProps) {
   const progress = Math.min(100, Math.round((raised / target) * 100));
   const kg = kgFromAmount(raised, campaign.impact_value_cents || 1);
   const regulation = publicRegulationText(campaign.regulation_text);
+  const statusNotice = campaignStatusNotice(campaign.status);
+  const canParticipate = campaign.status === "active";
 
   return (
     <>
       <PublicHeader />
       <main className="container-page pb-6 pt-3 md:pb-10 md:pt-4">
+        {statusNotice ? (
+          <section className="mb-5 rounded-3xl border border-[var(--border)] bg-[#fff8e8] p-5 shadow-sm">
+            <span className="badge">Atenção</span>
+            <h1 className="mt-2 text-2xl font-black text-[var(--brand-dark)]">{statusNotice.title}</h1>
+            <p className="mt-2 leading-7 text-[var(--muted)]">{statusNotice.text}</p>
+            <a
+              className="btn-primary mt-4 !w-auto"
+              href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20a%20campanha%20São%20Francisco%20em%20Ação."
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageCircle className="h-4 w-4" /> Falar pelo WhatsApp
+            </a>
+          </section>
+        ) : null}
+
         <section className="grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-start">
           <div className="card overflow-hidden">
             <div className="p-5">
@@ -107,7 +151,14 @@ export default async function CampaignPage({ params }: PageProps) {
               </p>
             </div>
 
-            <CampaignParticipation campaign={campaign} numbers={numbers || []} quotas={quotas || []} />
+            {canParticipate ? (
+              <CampaignParticipation campaign={campaign} numbers={numbers || []} quotas={quotas || []} />
+            ) : (
+              <div className="card p-5">
+                <h2 className="text-2xl font-black text-[var(--brand-dark)]">Participações indisponíveis</h2>
+                <p className="mt-2 leading-7 text-[var(--muted)]">No momento, esta campanha não está recebendo novas aquisições de números ou cotas. Para mais informações, use o botão de WhatsApp acima.</p>
+              </div>
+            )}
           </div>
         </section>
       </main>
