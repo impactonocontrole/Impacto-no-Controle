@@ -22,7 +22,15 @@ $items = @(
   "src/app/layout.tsx",
   "src/app/globals.css",
   "src/app/page.tsx",
+
   "src/app/acao/[slug]/page.tsx",
+  "src/app/acao/[slug]/layout.tsx",
+
+  "src/app/obrigado/[token]/page.tsx",
+  "src/app/acompanhar/[token]/page.tsx",
+
+  "src/app/api/participate/route.ts",
+  "src/app/api/track/[token]/route.ts",
 
   "src/components/PublicHeader.tsx",
   "src/components/CampaignParticipation.tsx",
@@ -33,11 +41,24 @@ $items = @(
   "public/images"
 )
 
-foreach ($relativePath in $items) {
+# Itens opcionais, se existirem
+$optionalItems = @(
+  "src/lib/email.ts",
+  "src/lib/mailer.ts",
+  "src/lib/resend.ts",
+  "src/app/api/send-email",
+  "src/app/head.tsx",
+  "src/app/opengraph-image.tsx",
+  "src/app/opengraph-image.png",
+  "src/app/acao/[slug]/opengraph-image.tsx",
+  "src/app/acao/[slug]/opengraph-image.png"
+)
+
+foreach ($relativePath in ($items + $optionalItems)) {
   $source = Join-Path $ProjectRoot $relativePath
 
   if (-not (Test-Path $source)) {
-    Write-Warning "Item não encontrado, pulando: $relativePath"
+    Write-Host "Pulando (não encontrado): $relativePath"
     continue
   }
 

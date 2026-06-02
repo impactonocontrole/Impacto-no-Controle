@@ -47,7 +47,7 @@ async function notifyParticipantByEmail(input: {
   const quotasText = input.quotas.length ? input.quotas.join("; ") : "Nenhuma cota escolhida";
 
   const subject = `Participação registrada - ${input.campaignTitle}`;
-  const text = `Olá, ${input.participantName}!\n\nSua participação foi registrada em ${input.campaignTitle}.\nCliente: ${input.clientName}\nValor: ${formatMoneyFromCents(input.amountCents)}\nNúmeros: ${numbersText}\nCotas: ${quotasText}\n\nA organização irá conferir o Pix e aprovar o pagamento.\n\nPágina de obrigado: ${thanksUrl}\nAcompanhamento: ${trackUrl}`;
+  const text = `Olá, ${input.participantName}!\n\nSua participação foi registrada em ${input.campaignTitle}.\nCliente: ${input.clientName}\nValor: ${formatMoneyFromCents(input.amountCents)}\nNúmeros: ${numbersText}\nCotas: ${quotasText}\nStatus: aguardando conferência do Pix pela organização\n\nA organização irá conferir o Pix e aprovar o pagamento. Salve o link de acompanhamento nos favoritos do navegador ou crie um atalho na tela inicial do celular.\n\nPágina de obrigado: ${thanksUrl}\nAcompanhamento: ${trackUrl}`;
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.55;color:#1d2a1f">
       <h2>Participação registrada</h2>
@@ -202,17 +202,21 @@ export async function POST(request: Request) {
       if (updateNumbersError) throw updateNumbersError;
     }
 
-    notifyParticipantByEmail({
-      request,
-      email,
-      participantName: name,
-      campaignTitle: campaign.title,
-      clientName: (campaign.clients as any)?.name || "Impacto no Controle",
-      amountCents,
-      numbers: uniqueNumbers,
-      quotas: quotaMessages,
-      token: contribution.acompanhamento_token,
-    }).catch((emailError) => console.warn("Falha ao enviar e-mail de participação", emailError));
+    try {
+      await notifyParticipantByEmail({
+        request,
+        email,
+        participantName: name,
+        campaignTitle: campaign.title,
+        clientName: (campaign.clients as any)?.name || "Impacto no Controle",
+        amountCents,
+        numbers: uniqueNumbers,
+        quotas: quotaMessages,
+        token: contribution.acompanhamento_token,
+      });
+    } catch (emailError) {
+      console.warn("Falha ao enviar e-mail de participação", emailError);
+    }
 
     return NextResponse.json({
       ok: true,

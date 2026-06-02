@@ -274,6 +274,20 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         ) : null}
       </div>
 
+
+      <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4">
+        <p className="text-sm font-extrabold text-[var(--brand-dark)]">Está com dificuldade para enviar o comprovante?</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Chame a Automação Extrema pelo WhatsApp antes de finalizar. Nós ajudamos você a concluir sua participação.</p>
+        <a
+          className="btn-secondary mt-3"
+          href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Preciso%20de%20ajuda%20para%20enviar%20o%20comprovante%20do%20Pix%20na%20a%C3%A7%C3%A3o%20do%20Impacto%20no%20Controle."
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MessageCircle className="h-4 w-4" /> Preciso de ajuda pelo WhatsApp
+        </a>
+      </div>
+
       <div className="mt-5">
         <label className="label">4. Envie o comprovante do Pix *</label>
         <input className="input" type="file" accept="image/*,.pdf" disabled={!isOpen} onChange={(e) => setProof(e.target.files?.[0] || null)} />

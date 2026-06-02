@@ -145,10 +145,62 @@ table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid var(--border); padding: 12px; text-align: left; vertical-align: top; }
 th { color: var(--brand-dark); font-size: 13px; }
 
+.public-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.public-header-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-link {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-title { max-width: 260px; }
+
+.header-access-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.header-access-button {
+  width: auto !important;
+  padding: 8px 14px !important;
+  font-size: 14px;
+}
+
+.campaign-client-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 640px) {
   .container-page { width: min(100% - 20px, 1120px); }
   .card { border-radius: 18px; }
   .btn-primary, .btn-secondary { width: 100%; }
+
+  .public-header { align-items: stretch; }
+  .public-header-main { width: 100%; justify-content: space-between; gap: 8px; }
+  .brand-link { gap: 9px; min-width: 0; }
+  .brand-link > span:first-child { width: 44px; height: 44px; border-radius: 16px; }
+  .brand-title { max-width: calc(100vw - 260px); font-size: 19px; }
+  .header-access-nav { flex: 0 0 auto; gap: 6px; }
+  .header-access-button { width: auto !important; padding: 8px 10px !important; font-size: 13px; }
 }
 
 .ae-header-badge {
@@ -176,7 +228,6 @@ th { color: var(--brand-dark); font-size: 13px; }
   .ae-header-badge {
     width: 100%;
     justify-content: flex-start;
-    order: 3;
   }
 
   .ae-header-badge img { height: 24px; }

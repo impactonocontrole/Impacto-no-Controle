@@ -50,7 +50,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className="ae-header-badge"
               aria-label="Abrir site da Automação Extrema"
             >
-              <span>uma solução da</span>
+              <span>Desenvolvido por</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/ae-logo.png" alt="Automação Extrema" />
             </a>

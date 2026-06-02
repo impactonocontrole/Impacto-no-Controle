@@ -8,6 +8,15 @@ type PageProps = { params: Promise<{ slug: string }> };
 
 export const revalidate = 0;
 
+function publicRegulationText(value: string | null | undefined) {
+  return String(value || "")
+    .replace(
+      /\s*Para ações públicas ou de maior alcance, recomenda-se validar as regras aplicáveis a sorteios, promoções e arrecadações\.?/gi,
+      ""
+    )
+    .trim();
+}
+
 export default async function CampaignPage({ params }: PageProps) {
   const { slug } = await params;
   const supabase = createSupabasePublicClient();
@@ -30,25 +39,24 @@ export default async function CampaignPage({ params }: PageProps) {
   const target = campaign.target_amount_cents || 1;
   const progress = Math.min(100, Math.round((raised / target) * 100));
   const kg = kgFromAmount(raised, campaign.impact_value_cents || 1);
+  const regulation = publicRegulationText(campaign.regulation_text);
 
   return (
     <>
-      <PublicHeader showAccessLinks={false} />
+      <PublicHeader />
       <main className="container-page pb-6 pt-3 md:pb-10 md:pt-4">
         <section className="grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-start">
           <div className="card overflow-hidden">
             <div className="p-5">
-              <div className="flex items-center gap-3">
+              <div className="campaign-client-row">
                 {campaign.client_logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={campaign.client_logo_url} alt={campaign.client_name} className="h-16 w-16 rounded-2xl border border-[var(--border)] bg-white object-contain p-1" />
+                  <img src={campaign.client_logo_url} alt={campaign.client_name} className="h-12 w-12 rounded-2xl border border-[var(--border)] bg-white object-contain p-1 md:h-14 md:w-14" />
                 ) : null}
-                <div className="min-w-0">
-                  <span className="badge">{campaign.client_name}</span>
-                  <h1 className="mt-2 text-3xl font-black leading-tight text-[var(--brand-dark)] md:text-4xl">{campaign.title}</h1>
-                  {campaign.subtitle ? <p className="mt-2 text-sm font-bold leading-6 text-[var(--muted)] md:text-base">{campaign.subtitle}</p> : null}
-                </div>
+                <span className="badge">{campaign.client_name}</span>
               </div>
+              <h1 className="mt-4 text-3xl font-black leading-tight text-[var(--brand-dark)] md:text-4xl">{campaign.title}</h1>
+              {campaign.subtitle ? <p className="mt-2 text-base font-bold leading-7 text-[var(--muted)] md:text-lg">{campaign.subtitle}</p> : null}
             </div>
 
             <div className="aspect-[4/3] bg-[#dfe8dd]">
@@ -67,10 +75,10 @@ export default async function CampaignPage({ params }: PageProps) {
 
             <div className="p-5">
               <p className="leading-7 text-[var(--muted)]">{campaign.story}</p>
-              {campaign.regulation_text ? (
-                <details className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-4 text-sm leading-6 text-[var(--muted)]">
+              {regulation ? (
+                <details open className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-4 text-sm leading-6 text-[var(--muted)]">
                   <summary className="cursor-pointer font-extrabold text-[var(--brand-dark)]">Regras e observações da ação</summary>
-                  <p className="mt-2 whitespace-pre-line">{campaign.regulation_text}</p>
+                  <p className="mt-2 whitespace-pre-line">{regulation}</p>
                 </details>
               ) : null}
               <div className="mt-5 rounded-2xl bg-[#f7f2e4] p-4">

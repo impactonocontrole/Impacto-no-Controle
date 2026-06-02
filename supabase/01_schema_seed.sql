@@ -518,7 +518,7 @@ select
   '58.392.598/0001-91',
   'TUCXA',
   'Campinas',
-  'Ação solidária com 80 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível. Para ações públicas ou de maior alcance, recomenda-se validar as regras aplicáveis a sorteios, promoções e arrecadações.',
+  'Ação solidária com 80 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.',
   'Estou ciente de que meus dados serão usados para confirmar minha participação nesta ação e para facilitar futuras ações solidárias, sem necessidade de preencher tudo novamente. Posso solicitar remoção depois.'
 from public.clients cl
 where cl.slug = 'sementinha-petz';
