@@ -537,12 +537,12 @@ select ca.id, 'whatsapp', 'launch', 'Mensagem de lançamento', $$Pessoal, estamo
 
 A imagem de São Francisco foi doada pela Claudia e queremos transformar essa doação em ração para cães e gatos.
 
-Cada número para participar do sorteio custa R$ 10,00. Quem quiser ampliar a ajuda também pode escolher cotas extras “1 kg de amor”.
-
-A meta ideal é chegar em R$ 650,00, o que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.
+Cada número para participar do sorteio custa R$ 10,00. A meta ideal é chegar em R$ 650,00, o que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.
 
 Participe pela página da ação:
 https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao
+
+A campanha encerra em 24/06/2026. O sorteio será feito em 25/06/2026, com divulgação em vídeo do número e nome do ganhador.
 
 Mais do que concorrer ao prêmio, a ideia é transformar carinho em alimento real.$$,
 1
@@ -552,7 +552,7 @@ select ca.id, 'whatsapp', 'progress', 'Mensagem de andamento', $$Atualização d
 
 Já arrecadamos [VALOR], o que representa aproximadamente [KG] kg de ração para cães e gatos.
 
-Faltam [FALTA] para bater a meta ideal. Quem ainda quiser participar pode escolher um número ou doar uma cota “1 kg de amor”.
+Faltam [FALTA] para bater a meta ideal. Quem ainda quiser participar pode escolher um número disponível.
 
 Acompanhe ou participe aqui:
 https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao
@@ -563,9 +563,9 @@ from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
 select ca.id, 'whatsapp', 'last_call', 'Última chamada', $$Última chamada para a ação São Francisco em Ação 🐾
 
-Estamos perto de fechar a campanha. Ainda dá tempo de escolher um número ou contribuir com uma cota “1 kg de amor”.
+Estamos perto de fechar a campanha. Ainda dá tempo de escolher um número disponível.
 
-Cada participação ajuda a transformar a imagem de São Francisco em ração para cães e gatos.
+Cada número ajuda a transformar a imagem de São Francisco em ração para cães e gatos.
 
 Participe ou compartilhe este link com alguém que também ame essa causa:
 https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao$$,

@@ -39,6 +39,8 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
 
+  const quotasEnabled = campaign.slug !== "sao-francisco-em-racao" && quotas.length > 0;
+
   const isOpen = useMemo(() => {
     if (campaign.status && campaign.status !== "active") return false;
     const now = Date.now();
@@ -49,12 +51,14 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
 
   const totalCents = useMemo(() => {
     const numberAmount = selectedNumbers.length * campaign.number_price_cents;
-    const quotaAmount = Object.entries(selectedQuotas).reduce((sum, [id, qty]) => {
-      const quota = quotas.find((q) => q.id === id);
-      return sum + (quota?.amount_cents || 0) * qty;
-    }, 0);
+    const quotaAmount = quotasEnabled
+      ? Object.entries(selectedQuotas).reduce((sum, [id, qty]) => {
+          const quota = quotas.find((q) => q.id === id);
+          return sum + (quota?.amount_cents || 0) * qty;
+        }, 0)
+      : 0;
     return numberAmount + quotaAmount;
-  }, [campaign.number_price_cents, quotas, selectedNumbers.length, selectedQuotas]);
+  }, [campaign.number_price_cents, quotas, quotasEnabled, selectedNumbers.length, selectedQuotas]);
 
   const pixPayload = useMemo(() => {
     if (totalCents <= 0) return "";
@@ -129,7 +133,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     setError(null);
 
     if (!isOpen) return setError("Esta campanha ainda não está aberta ou já foi encerrada.");
-    if (totalCents <= 0) return setError("Escolha pelo menos um número ou uma cota solidária.");
+    if (totalCents <= 0) return setError(quotasEnabled ? "Escolha pelo menos um número ou uma cota solidária." : "Escolha pelo menos um número para participar do sorteio.");
     if (!name.trim()) return setError("Informe seu nome.");
     if (normalizePhone(phone).length < 10) return setError("Informe um celular válido com DDD.");
     if (!consent) return setError("Confirme o aviso de uso dos dados para continuar.");
@@ -143,7 +147,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       formData.append("phone", normalizePhone(phone));
       formData.append("email", email.trim());
       formData.append("selected_numbers", JSON.stringify(selectedNumbers));
-      formData.append("selected_quotas", JSON.stringify(selectedQuotas));
+      formData.append("selected_quotas", JSON.stringify(quotasEnabled ? selectedQuotas : {}));
       formData.append("amount_cents", String(totalCents));
       formData.append("proof", proof);
 
@@ -160,16 +164,24 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   return (
     <div className="card p-5">
       <h2 className="text-2xl font-black text-[var(--brand-dark)]">Participe da ação</h2>
-      <p className="mt-2 text-[var(--muted)]">Escolha seu número para o sorteio da imagem. Depois, se desejar, aumente sua colaboração com cotas extras de amor.</p>
+      <p className="mt-2 text-[var(--muted)]">
+        {quotasEnabled
+          ? "Escolha seu número para o sorteio da imagem. Depois, se desejar, aumente sua colaboração com cotas extras de amor."
+          : "Escolha um ou mais números disponíveis para participar do sorteio da imagem."}
+      </p>
 
       <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4 text-sm leading-6 text-[var(--brand-dark)]">
         <div className="flex gap-3">
           <HelpCircle className="mt-1 h-5 w-5 shrink-0" />
           <div>
             <p className="font-extrabold">Como funciona</p>
-            <p className="mt-1">1) Escolha um ou mais números para participar do sorteio. 2) Se quiser, aumente sua colaboração com cotas extras. 3) Confira o valor total. 4) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 5) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação.</p>
-            <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle." target="_blank" rel="noreferrer">
-              <MessageCircle className="h-4 w-4" /> Preciso de ajuda pelo WhatsApp
+            <p className="mt-1">
+              {quotasEnabled
+                ? "1) Escolha um ou mais números para participar do sorteio. 2) Se quiser, aumente sua colaboração com cotas extras. 3) Confira o valor total. 4) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 5) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação."
+                : "1) Escolha um ou mais números para participar do sorteio. 2) Confira o valor total. 3) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 4) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação."}
+            </p>
+            <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle.%20Gostaria%20de%20falar%20com%20o%20M%C3%A1rcio%20Alexandre." target="_blank" rel="noreferrer">
+              <MessageCircle className="h-4 w-4" /> Preciso falar com o Márcio Alexandre no WhatsApp
             </a>
           </div>
         </div>
@@ -201,6 +213,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         </div>
       </div>
 
+      {quotasEnabled ? (
       <div className="mt-7 border-t border-[var(--border)] pt-6">
         <span className="badge">Colaboração extra opcional</span>
         <h3 className="mt-3 font-extrabold text-[var(--brand-dark)]">2. Quer aumentar sua colaboração?</h3>
@@ -223,6 +236,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
           ))}
         </div>
       </div>
+      ) : null}
 
       <div className="mt-7 rounded-2xl bg-[#eef5ec] p-4">
         <p className="text-sm font-bold text-[var(--muted)]">Total da participação</p>
@@ -277,14 +291,14 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
 
       <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4">
         <p className="text-sm font-extrabold text-[var(--brand-dark)]">Está com dificuldade para enviar o comprovante?</p>
-        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Chame a Automação Extrema pelo WhatsApp antes de finalizar. Nós ajudamos você a concluir sua participação.</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Fale com o Márcio Alexandre no WhatsApp antes de finalizar. Ele ajuda você a concluir sua participação com segurança.</p>
         <a
           className="btn-secondary mt-3"
-          href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Preciso%20de%20ajuda%20para%20enviar%20o%20comprovante%20do%20Pix%20na%20a%C3%A7%C3%A3o%20do%20Impacto%20no%20Controle."
+          href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20M%C3%A1rcio%20Alexandre%21%20Preciso%20de%20ajuda%20para%20enviar%20o%20comprovante%20do%20Pix%20na%20a%C3%A7%C3%A3o%20do%20Impacto%20no%20Controle."
           target="_blank"
           rel="noreferrer"
         >
-          <MessageCircle className="h-4 w-4" /> Preciso de ajuda pelo WhatsApp
+          <MessageCircle className="h-4 w-4" /> Preciso falar com o Márcio Alexandre no WhatsApp
         </a>
       </div>
 
