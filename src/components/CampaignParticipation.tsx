@@ -291,7 +291,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       <div className="mt-5">
         <label className="label">4. Envie o comprovante do Pix *</label>
         <input className="input" type="file" accept="image/*,.pdf" disabled={!isOpen} onChange={(e) => setProof(e.target.files?.[0] || null)} />
-        <p className="mt-2 text-sm text-[var(--muted)]">O comprovante é obrigatório para a organização conferir o pagamento e confirmar sua participação.</p>
+        <p className="mt-2 text-sm text-[var(--muted)]">O comprovante é obrigatório. O sistema faz uma validação inicial quando consegue ler os dados do arquivo e, depois, a organização confere o pagamento para confirmar sua participação.</p>
       </div>
 
       {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}

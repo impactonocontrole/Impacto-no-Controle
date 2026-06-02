@@ -270,12 +270,12 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 create policy "public read clients" on public.clients for select using (true);
-create policy "public read active campaigns" on public.campaigns for select using (status in ('active','closed','accountability_published'));
+create policy "public read active campaigns" on public.campaigns for select using (status in ('active','paused','closed','accountability_published'));
 create policy "public read campaign numbers" on public.campaign_numbers for select using (
-  exists (select 1 from public.campaigns c where c.id = campaign_id and c.status in ('active','closed','accountability_published'))
+  exists (select 1 from public.campaigns c where c.id = campaign_id and c.status in ('active','paused','closed','accountability_published'))
 );
 create policy "public read active quotas" on public.campaign_quotas for select using (
-  is_active and exists (select 1 from public.campaigns c where c.id = campaign_id and c.status in ('active','closed','accountability_published'))
+  is_active and exists (select 1 from public.campaigns c where c.id = campaign_id and c.status in ('active','paused','closed','accountability_published'))
 );
 create policy "public read public updates" on public.campaign_updates for select using (is_public);
 

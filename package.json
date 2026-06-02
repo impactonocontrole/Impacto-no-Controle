@@ -15,7 +15,8 @@
     "next": "latest",
     "qrcode": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "@swc/helpers": "latest"
   },
   "devDependencies": {
     "@eslint/eslintrc": "latest",

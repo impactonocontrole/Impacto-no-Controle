@@ -18,22 +18,33 @@ function publicRegulationText(value: string | null | undefined) {
     .trim();
 }
 
+function normalizeCampaignStatus(status: string) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (["pausada", "pausado"].includes(normalized)) return "paused";
+  if (["ativa", "ativo"].includes(normalized)) return "active";
+  if (["encerrada", "encerrado"].includes(normalized)) return "closed";
+  if (["prestacao_publicada", "prestação publicada"].includes(normalized)) return "accountability_published";
+  if (["rascunho"].includes(normalized)) return "draft";
+  return normalized;
+}
+
 function campaignStatusNotice(status: string) {
-  if (status === "paused") {
+  const normalizedStatus = normalizeCampaignStatus(status);
+  if (normalizedStatus === "paused") {
     return {
       title: "Campanha pausada no momento",
       text: "As novas participações estão temporariamente suspensas. Para saber quando a ação será retomada ou tirar dúvidas, fale com a Automação Extrema pelo WhatsApp.",
     };
   }
 
-  if (status === "closed") {
+  if (normalizedStatus === "closed") {
     return {
       title: "Campanha encerrada",
       text: "Esta ação já foi encerrada e não está recebendo novas participações. Acompanhe a prestação de contas ou fale com a organização para mais informações.",
     };
   }
 
-  if (status === "accountability_published") {
+  if (normalizedStatus === "accountability_published") {
     return {
       title: "Prestação de contas publicada",
       text: "Esta campanha foi encerrada e a prestação de contas já pode ser acompanhada pela organização. Obrigado a todos que ajudaram a transformar solidariedade em resultado real.",
@@ -53,7 +64,9 @@ export default async function CampaignPage({ params }: PageProps) {
     .eq("slug", slug)
     .maybeSingle();
 
-  if (error || !campaign || campaign.status === "draft") notFound();
+  const normalizedStatus = normalizeCampaignStatus(campaign?.status || "");
+
+  if (error || !campaign || normalizedStatus === "draft") notFound();
 
   const [{ data: numbers }, { data: quotas }, { data: stats }] = await Promise.all([
     supabase.from("campaign_numbers_public").select("number,status,buyer_display_name").eq("campaign_id", campaign.id).order("number"),
@@ -66,8 +79,8 @@ export default async function CampaignPage({ params }: PageProps) {
   const progress = Math.min(100, Math.round((raised / target) * 100));
   const kg = kgFromAmount(raised, campaign.impact_value_cents || 1);
   const regulation = publicRegulationText(campaign.regulation_text);
-  const statusNotice = campaignStatusNotice(campaign.status);
-  const canParticipate = campaign.status === "active";
+  const statusNotice = campaignStatusNotice(normalizedStatus);
+  const canParticipate = normalizedStatus === "active";
 
   return (
     <>
@@ -101,6 +114,16 @@ export default async function CampaignPage({ params }: PageProps) {
               </div>
               <h1 className="mt-4 text-3xl font-black leading-tight text-[var(--brand-dark)] md:text-4xl">{campaign.title}</h1>
               {campaign.subtitle ? <p className="mt-2 text-base font-bold leading-7 text-[var(--muted)] md:text-lg">{campaign.subtitle}</p> : null}
+              {canParticipate ? (
+                <a
+                  className="btn-primary mt-4 !w-auto"
+                  href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Tenho%20d%C3%BAvidas%20sobre%20a%20a%C3%A7%C3%A3o%20S%C3%A3o%20Francisco%20em%20A%C3%A7%C3%A3o."
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MessageCircle className="h-4 w-4" /> Dúvidas: Fale no WhatsApp
+                </a>
+              ) : null}
             </div>
 
             <div className="aspect-[4/3] bg-[#dfe8dd]">
