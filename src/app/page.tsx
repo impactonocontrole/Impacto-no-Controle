@@ -16,16 +16,9 @@ export default function Home() {
     <>
       <PublicHeader />
       <main>
-        <section className="container-page grid gap-8 py-10 md:grid-cols-[1.1fr_0.9fr] md:items-center md:py-16">
+        <section className="container-page grid gap-8 py-6 md:grid-cols-[1.1fr_0.9fr] md:items-center md:py-10">
           <div>
-            <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-[var(--border)] bg-white/75 p-3 text-sm font-bold text-[var(--brand-dark)]">
-              <span>Uma solução da</span>
-              <a href="https://automacao-extrema.vercel.app/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-2xl bg-[#0c3554] px-3 py-2 text-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/images/ae-logo.png" alt="Automação Extrema" className="h-8 w-auto" />
-              </a>
-            </div>
-            <h1 className="mt-5 text-4xl font-black leading-tight text-[var(--brand-dark)] md:text-6xl">
+            <h1 className="text-4xl font-black leading-tight text-[var(--brand-dark)] md:text-6xl">
               Transforme boas intenções em impacto organizado e transparente.
             </h1>
             <p className="mt-5 text-lg leading-8 text-[var(--muted)]">

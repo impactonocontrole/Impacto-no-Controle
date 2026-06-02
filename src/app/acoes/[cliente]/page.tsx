@@ -20,8 +20,8 @@ export default async function ClientActionsPage({ params }: PageProps) {
 
   return (
     <>
-      <PublicHeader />
-      <main className="container-page py-8">
+      <PublicHeader showAccessLinks={false} />
+      <main className="container-page py-4 md:py-6">
         <div className="card p-6">
           {client.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element

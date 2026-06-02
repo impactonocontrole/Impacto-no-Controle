@@ -28,8 +28,8 @@ export default async function TrackPage({ params }: PageProps) {
 
   return (
     <>
-      <PublicHeader />
-      <main className="container-page py-8">
+      <PublicHeader showAccessLinks={false} />
+      <main className="container-page py-4 md:py-6">
         <div className="card mx-auto max-w-2xl p-6">
           <span className="badge">Acompanhamento</span>
           <h1 className="mt-3 text-3xl font-black text-[var(--brand-dark)]">{data.campaign_title}</h1>

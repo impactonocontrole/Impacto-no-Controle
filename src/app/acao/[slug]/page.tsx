@@ -33,10 +33,24 @@ export default async function CampaignPage({ params }: PageProps) {
 
   return (
     <>
-      <PublicHeader />
-      <main className="container-page py-6 md:py-10">
+      <PublicHeader showAccessLinks={false} />
+      <main className="container-page pb-6 pt-3 md:pb-10 md:pt-4">
         <section className="grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-start">
           <div className="card overflow-hidden">
+            <div className="p-5">
+              <div className="flex items-center gap-3">
+                {campaign.client_logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={campaign.client_logo_url} alt={campaign.client_name} className="h-16 w-16 rounded-2xl border border-[var(--border)] bg-white object-contain p-1" />
+                ) : null}
+                <div className="min-w-0">
+                  <span className="badge">{campaign.client_name}</span>
+                  <h1 className="mt-2 text-3xl font-black leading-tight text-[var(--brand-dark)] md:text-4xl">{campaign.title}</h1>
+                  {campaign.subtitle ? <p className="mt-2 text-sm font-bold leading-6 text-[var(--muted)] md:text-base">{campaign.subtitle}</p> : null}
+                </div>
+              </div>
+            </div>
+
             <div className="aspect-[4/3] bg-[#dfe8dd]">
               {campaign.main_image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -50,14 +64,9 @@ export default async function CampaignPage({ params }: PageProps) {
                 </div>
               )}
             </div>
+
             <div className="p-5">
-              {campaign.client_logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={campaign.client_logo_url} alt={campaign.client_name} className="mb-4 h-16 w-16 rounded-2xl border border-[var(--border)] bg-white object-contain p-1" />
-              ) : null}
-              <span className="badge">{campaign.client_name}</span>
-              <h1 className="mt-3 text-3xl font-black leading-tight text-[var(--brand-dark)] md:text-4xl">{campaign.title}</h1>
-              <p className="mt-3 leading-7 text-[var(--muted)]">{campaign.story}</p>
+              <p className="leading-7 text-[var(--muted)]">{campaign.story}</p>
               {campaign.regulation_text ? (
                 <details className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-4 text-sm leading-6 text-[var(--muted)]">
                   <summary className="cursor-pointer font-extrabold text-[var(--brand-dark)]">Regras e observações da ação</summary>

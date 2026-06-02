@@ -411,12 +411,15 @@ join public.participants p on p.id = con.participant_id;
 create view public.contribution_tracking as
 select
   con.acompanhamento_token,
+  con.campaign_id,
   con.status,
   con.amount_cents,
   con.selected_numbers,
   con.selected_quotas,
   con.created_at,
   p.name as participant_name,
+  p.phone as participant_phone,
+  p.email as participant_email,
   ca.title as campaign_title,
   ca.slug as campaign_slug,
   cl.name as client_name

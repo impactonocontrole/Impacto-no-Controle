@@ -187,6 +187,31 @@ export function CampaignDetailClient({ id }: { id: string }) {
     window.open(json.url, "_blank");
   }
 
+  async function copyAcquisitionWhatsApp(c: any) {
+    const statusLabel: Record<string, string> = {
+      pending_approval: "aguardando conferência do Pix",
+      approved: "pagamento aprovado",
+      rejected: "pagamento não aprovado",
+      canceled: "cancelado",
+    };
+
+    const publicUrl = `${window.location.origin}/acao/${detail?.campaign.slug}`;
+    const trackUrl = `${window.location.origin}/acompanhar/${c.acompanhamento_token}`;
+    const numbers = c.selected_numbers?.length ? c.selected_numbers.map((n: number) => String(n).padStart(2, "0")).join(", ") : "participação por cota/doação";
+    const message = [
+      `Olá, ${c.participant_name}! Sua participação na ação ${detail?.campaign.title} foi registrada.`,
+      `Valor: ${formatMoneyFromCents(c.amount_cents)}`,
+      `Números: ${numbers}`,
+      `Status: ${statusLabel[c.status] || c.status}`,
+      `Acompanhe por aqui: ${trackUrl}`,
+      `Página da ação: ${publicUrl}`,
+      "Gratidão por transformar solidariedade em impacto real."
+    ].join("\n\n");
+
+    await navigator.clipboard.writeText(message);
+    alert("Mensagem para WhatsApp copiada.");
+  }
+
   const isOpen = useMemo(() => {
     if (!detail?.campaign || detail.campaign.status !== "active") return false;
     const now = Date.now();
@@ -266,6 +291,7 @@ export function CampaignDetailClient({ id }: { id: string }) {
                       <td>{c.selected_numbers?.join(", ") || "-"}</td>
                       <td>{c.proof_file_path ? <button className="btn-secondary !w-auto !py-2" onClick={() => openProof(c.proof_file_path)}>Abrir</button> : "-"}</td>
                       <td className="flex flex-wrap gap-2">
+                        <button className="btn-secondary !w-auto !py-2" onClick={() => copyAcquisitionWhatsApp(c)}>Copiar WhatsApp</button>
                         {c.status === "pending_approval" ? <button className="btn-primary !w-auto !py-2" onClick={() => approve(c.id)}>Aprovar</button> : null}
                         {c.status === "pending_approval" ? <button className="btn-secondary !w-auto !py-2" onClick={() => reject(c.id)}>Rejeitar</button> : null}
                       </td>

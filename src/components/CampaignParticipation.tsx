@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { HelpCircle, MessageCircle } from "lucide-react";
 import QRCode from "qrcode";
 import { buildPixPayload } from "@/lib/pix";
@@ -25,6 +26,7 @@ type NumberItem = { number: number; status: string; buyer_display_name: string |
 type Quota = { id: string; title: string; description: string | null; amount_cents: number; impact_qty: number | null };
 
 export function CampaignParticipation({ campaign, numbers, quotas }: { campaign: Campaign; numbers: NumberItem[]; quotas: Quota[] }) {
+  const router = useRouter();
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [selectedQuotas, setSelectedQuotas] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
@@ -33,7 +35,6 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [consent, setConsent] = useState(false);
   const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ token: string; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
 
@@ -94,7 +95,6 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
 
   async function submit() {
     setError(null);
-    setResult(null);
 
     if (!isOpen) return setError("Esta campanha ainda não está aberta ou já foi encerrada.");
     if (totalCents <= 0) return setError("Escolha pelo menos um número ou uma cota solidária.");
@@ -118,13 +118,9 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       const response = await fetch("/api/participate", { method: "POST", body: formData });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Não foi possível registrar sua participação.");
-      setResult({ token: json.token, message: json.message });
-      setSelectedNumbers([]);
-      setSelectedQuotas({});
-      setProof(null);
+      router.push(`/obrigado/${json.token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
-    } finally {
       setLoading(false);
     }
   }
@@ -233,15 +229,10 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       <div className="mt-5">
         <label className="label">4. Envie o comprovante do Pix *</label>
         <input className="input" type="file" accept="image/*,.pdf" disabled={!isOpen} onChange={(e) => setProof(e.target.files?.[0] || null)} />
+        <p className="mt-2 text-sm text-[var(--muted)]">O comprovante é obrigatório para a organização conferir o pagamento e confirmar sua participação.</p>
       </div>
 
       {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}
-      {result ? (
-        <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-800">
-          <p className="font-extrabold">{result.message}</p>
-          <a className="mt-2 inline-block underline" href={`/acompanhar/${result.token}`}>Acompanhar minha participação</a>
-        </div>
-      ) : null}
 
       <button type="button" className="btn-primary mt-5" onClick={submit} disabled={loading || !isOpen}>
         {loading ? "Enviando..." : "Finalizar participação"}

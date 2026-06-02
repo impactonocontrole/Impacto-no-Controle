@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { PublicHeader } from "@/components/PublicHeader";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function ResetPasswordPage() {
@@ -28,25 +29,28 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="container-page grid min-h-screen place-items-center py-8">
-      <div className="card w-full max-w-md p-6">
-        <Link href="/" className="text-sm font-bold text-[var(--brand)]">← Voltar</Link>
-        <h1 className="mt-4 text-3xl font-black text-[var(--brand-dark)]">Redefinir senha</h1>
-        <p className="mt-2 text-[var(--muted)]">Informe sua nova senha de acesso.</p>
-        <div className="mt-6 space-y-4">
-          <div>
-            <label className="label">Nova senha</label>
-            <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+    <>
+      <PublicHeader showAccessLinks={false} />
+      <main className="container-page grid min-h-[calc(100vh-74px)] place-items-center py-6">
+        <div className="card w-full max-w-md p-6">
+          <Link href="/" className="text-sm font-bold text-[var(--brand)]">← Voltar</Link>
+          <h1 className="mt-4 text-3xl font-black text-[var(--brand-dark)]">Redefinir senha</h1>
+          <p className="mt-2 text-[var(--muted)]">Informe sua nova senha de acesso.</p>
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="label">Nova senha</label>
+              <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Confirmar nova senha</label>
+              <input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+            </div>
+            {error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
+            {info ? <div className="rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">{info}</div> : null}
+            <button className="btn-primary" onClick={updatePassword} disabled={loading}>{loading ? "Salvando..." : "Salvar nova senha"}</button>
           </div>
-          <div>
-            <label className="label">Confirmar nova senha</label>
-            <input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-          </div>
-          {error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
-          {info ? <div className="rounded-2xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">{info}</div> : null}
-          <button className="btn-primary" onClick={updatePassword} disabled={loading}>{loading ? "Salvando..." : "Salvar nova senha"}</button>
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }

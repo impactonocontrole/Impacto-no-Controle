@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { buyerDisplayName, normalizePhone } from "@/lib/format";
+import { buyerDisplayName, formatMoneyFromCents, normalizePhone } from "@/lib/format";
+import { escapeHtml, sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,70 @@ function safeJson<T>(value: FormDataEntryValue | null, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function getAppUrl(request: Request) {
+  return process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+}
+
+function formatSelectedQuotas(selectedQuotas: Record<string, number>, quotaMap: Record<string, { title: string; amount_cents: number }>) {
+  return Object.entries(selectedQuotas)
+    .map(([id, qty]) => {
+      const quota = quotaMap[id];
+      if (!quota || Number(qty) <= 0) return null;
+      return `${qty}x ${quota.title} (${formatMoneyFromCents(quota.amount_cents * Number(qty))})`;
+    })
+    .filter(Boolean) as string[];
+}
+
+async function notifyParticipantByEmail(input: {
+  request: Request;
+  email: string | null;
+  participantName: string;
+  campaignTitle: string;
+  clientName: string;
+  amountCents: number;
+  numbers: number[];
+  quotas: string[];
+  token: string;
+}) {
+  if (!input.email) return;
+
+  const appUrl = getAppUrl(input.request);
+  const thanksUrl = `${appUrl}/obrigado/${input.token}`;
+  const trackUrl = `${appUrl}/acompanhar/${input.token}`;
+  const numbersText = input.numbers.length ? input.numbers.map((n) => String(n).padStart(2, "0")).join(", ") : "Nenhum número escolhido";
+  const quotasText = input.quotas.length ? input.quotas.join("; ") : "Nenhuma cota escolhida";
+
+  const subject = `Participação registrada - ${input.campaignTitle}`;
+  const text = `Olá, ${input.participantName}!\n\nSua participação foi registrada em ${input.campaignTitle}.\nCliente: ${input.clientName}\nValor: ${formatMoneyFromCents(input.amountCents)}\nNúmeros: ${numbersText}\nCotas: ${quotasText}\n\nA organização irá conferir o Pix e aprovar o pagamento.\n\nPágina de obrigado: ${thanksUrl}\nAcompanhamento: ${trackUrl}`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.55;color:#1d2a1f">
+      <h2>Participação registrada</h2>
+      <p>Olá, <strong>${escapeHtml(input.participantName)}</strong>!</p>
+      <p>Sua participação foi registrada na campanha <strong>${escapeHtml(input.campaignTitle)}</strong>.</p>
+      <ul>
+        <li><strong>Cliente:</strong> ${escapeHtml(input.clientName)}</li>
+        <li><strong>Valor:</strong> ${escapeHtml(formatMoneyFromCents(input.amountCents))}</li>
+        <li><strong>Números:</strong> ${escapeHtml(numbersText)}</li>
+        <li><strong>Cotas:</strong> ${escapeHtml(quotasText)}</li>
+        <li><strong>Status:</strong> aguardando conferência do Pix pela organização</li>
+      </ul>
+      <p>Salve o link abaixo para acompanhar sua participação:</p>
+      <p><a href="${escapeHtml(trackUrl)}">Acompanhar minha participação</a></p>
+      <p>Também deixamos uma página de obrigado com as orientações para salvar nos favoritos ou criar atalho na tela inicial do celular:</p>
+      <p><a href="${escapeHtml(thanksUrl)}">Abrir página de obrigado</a></p>
+      <p>Gratidão por transformar solidariedade em impacto real.</p>
+    </div>
+  `;
+
+  await sendEmail({
+    to: input.email,
+    cc: [process.env.IMPACTO_ADMIN_EMAIL || "impactonocontrole@gmail.com"],
+    subject,
+    text,
+    html,
+  });
 }
 
 export async function POST(request: Request) {
@@ -34,7 +99,7 @@ export async function POST(request: Request) {
 
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
-      .select("id, client_id, slug, status, number_price_cents, starts_at, ends_at")
+      .select("id, client_id, slug, title, status, number_price_cents, starts_at, ends_at, clients(name)")
       .eq("slug", campaignSlug)
       .maybeSingle();
 
@@ -64,6 +129,19 @@ export async function POST(request: Request) {
       }
     }
 
+    const quotaArray = Object.entries(selectedQuotas)
+      .map(([quotaId, qty]) => ({ quota_id: quotaId, qty: Number(qty) }))
+      .filter((item) => item.qty > 0);
+
+    const quotaIds = quotaArray.map((q) => q.quota_id);
+    const { data: quotaRows, error: quotaError } = quotaIds.length
+      ? await supabase.from("campaign_quotas").select("id,title,amount_cents").eq("campaign_id", campaign.id).in("id", quotaIds)
+      : { data: [], error: null };
+    if (quotaError) throw quotaError;
+
+    const quotaMap = Object.fromEntries((quotaRows || []).map((q: any) => [q.id, { title: q.title, amount_cents: q.amount_cents }]));
+    const quotaMessages = formatSelectedQuotas(selectedQuotas, quotaMap);
+
     const { data: participant, error: participantError } = await supabase
       .from("participants")
       .upsert({ client_id: campaign.client_id, name, phone, email, consent_at: new Date().toISOString() }, { onConflict: "client_id,phone" })
@@ -71,10 +149,6 @@ export async function POST(request: Request) {
       .single();
 
     if (participantError) throw participantError;
-
-    const quotaArray = Object.entries(selectedQuotas)
-      .map(([quotaId, qty]) => ({ quota_id: quotaId, qty: Number(qty) }))
-      .filter((item) => item.qty > 0);
 
     const contributionType = uniqueNumbers.length && quotaArray.length ? "mixed" : uniqueNumbers.length ? "numbers" : "quota";
 
@@ -127,6 +201,18 @@ export async function POST(request: Request) {
         .in("number", uniqueNumbers);
       if (updateNumbersError) throw updateNumbersError;
     }
+
+    notifyParticipantByEmail({
+      request,
+      email,
+      participantName: name,
+      campaignTitle: campaign.title,
+      clientName: (campaign.clients as any)?.name || "Impacto no Controle",
+      amountCents,
+      numbers: uniqueNumbers,
+      quotas: quotaMessages,
+      token: contribution.acompanhamento_token,
+    }).catch((emailError) => console.warn("Falha ao enviar e-mail de participação", emailError));
 
     return NextResponse.json({
       ok: true,

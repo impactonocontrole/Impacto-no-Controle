@@ -149,3 +149,34 @@ th { color: var(--brand-dark); font-size: 13px; }
   .card { border-radius: 18px; }
   .btn-primary, .btn-secondary { width: 100%; }
 }
+
+.ae-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fffdf7;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brand-dark);
+  white-space: nowrap;
+}
+
+.ae-header-badge img {
+  height: 28px;
+  width: auto;
+  border-radius: 8px;
+  background: #0c3554;
+}
+
+@media (max-width: 640px) {
+  .ae-header-badge {
+    width: 100%;
+    justify-content: flex-start;
+    order: 3;
+  }
+
+  .ae-header-badge img { height: 24px; }
+}
