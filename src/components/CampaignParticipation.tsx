@@ -37,7 +37,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<{ target: "pix" | "key"; text: string; tone: "success" | "error" } | null>(null);
 
   const quotasEnabled = campaign.slug !== "sao-francisco-em-racao" && quotas.length > 0;
 
@@ -114,18 +114,34 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
 
     try {
       await writeToClipboard(pixPayload);
-      setCopyMessage("Pix copia e cola copiado. Cole no app do banco na opção Pix Copia e Cola ou QR Code.");
+      setCopyFeedback({
+        target: "pix",
+        tone: "success",
+        text: "✅ Pix copia e cola copiado! Agora abra o app do seu banco, escolha Pix Copia e Cola e cole o código para pagar.",
+      });
     } catch {
-      setCopyMessage("Não foi possível copiar automaticamente. Copie manualmente o código Pix exibido abaixo.");
+      setCopyFeedback({
+        target: "pix",
+        tone: "error",
+        text: "Não foi possível copiar automaticamente. Abra a opção ‘Ver código Pix copia e cola’ e copie o código manualmente.",
+      });
     }
   }
 
   async function copyPixKey() {
     try {
       await writeToClipboard(campaign.pix_key.trim());
-      setCopyMessage("Chave Pix copiada.");
+      setCopyFeedback({
+        target: "key",
+        tone: "success",
+        text: "✅ Chave Pix copiada! Agora cole a chave no app do banco para pagar.",
+      });
     } catch {
-      setCopyMessage("Não foi possível copiar automaticamente. Copie manualmente a chave Pix exibida abaixo.");
+      setCopyFeedback({
+        target: "key",
+        tone: "error",
+        text: "Não foi possível copiar automaticamente. Copie manualmente a chave Pix exibida acima.",
+      });
     }
   }
 
@@ -270,12 +286,27 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
           O botão “Pix copia e cola” copia o código completo para colar no aplicativo do banco. Se preferir, use “Copiar chave Pix”.
         </p>
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-          <button type="button" className="btn-secondary" onClick={generateQr} disabled={!isOpen || totalCents <= 0}>Gerar QR Code</button>
-          <button type="button" className="btn-primary" onClick={copyPix} disabled={!isOpen || totalCents <= 0}>Copiar Pix copia e cola</button>
-          <button type="button" className="btn-secondary" onClick={copyPixKey} disabled={!isOpen}>Copiar chave Pix</button>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <button type="button" className="btn-secondary w-full" onClick={generateQr} disabled={!isOpen || totalCents <= 0}>Gerar QR Code</button>
+          </div>
+          <div>
+            <button type="button" className="btn-primary w-full" onClick={copyPix} disabled={!isOpen || totalCents <= 0}>Copiar Pix copia e cola</button>
+            {copyFeedback?.target === "pix" ? (
+              <div className={`mt-3 rounded-2xl border-2 p-4 text-sm font-extrabold leading-6 shadow-sm ${copyFeedback.tone === "success" ? "border-[#f59e0b] bg-[#fff1a8] text-[#3f2a00]" : "border-red-400 bg-red-50 text-red-800"}`} role="status" aria-live="polite">
+                {copyFeedback.text}
+              </div>
+            ) : null}
+          </div>
+          <div>
+            <button type="button" className="btn-secondary w-full" onClick={copyPixKey} disabled={!isOpen}>Copiar chave Pix</button>
+            {copyFeedback?.target === "key" ? (
+              <div className={`mt-3 rounded-2xl border-2 p-4 text-sm font-extrabold leading-6 shadow-sm ${copyFeedback.tone === "success" ? "border-[#f59e0b] bg-[#fff1a8] text-[#3f2a00]" : "border-red-400 bg-red-50 text-red-800"}`} role="status" aria-live="polite">
+                {copyFeedback.text}
+              </div>
+            ) : null}
+          </div>
         </div>
-        {copyMessage ? <p className="mt-3 rounded-2xl bg-[#eef5ec] p-3 text-sm font-bold text-[var(--brand-dark)]">{copyMessage}</p> : null}
         {pixPayload && totalCents > 0 ? (
           <details className="mt-3 rounded-2xl border border-[var(--border)] bg-[#fffdf7] p-3 text-sm">
             <summary className="cursor-pointer font-extrabold text-[var(--brand-dark)]">Ver código Pix copia e cola</summary>
