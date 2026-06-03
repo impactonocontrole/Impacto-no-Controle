@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HelpCircle, MessageCircle } from "lucide-react";
 import QRCode from "qrcode";
@@ -25,6 +25,17 @@ type Campaign = {
 type NumberItem = { number: number; status: string; buyer_display_name: string | null };
 type Quota = { id: string; title: string; description: string | null; amount_cents: number; impact_qty: number | null };
 
+type ParticipationDraft = {
+  selectedNumbers?: number[];
+  selectedQuotas?: Record<string, number>;
+  name?: string;
+  phone?: string;
+  email?: string;
+  consent?: boolean;
+  pixCopiedAt?: string | null;
+  updatedAt?: string;
+};
+
 export function CampaignParticipation({ campaign, numbers, quotas }: { campaign: Campaign; numbers: NumberItem[]; quotas: Quota[] }) {
   const router = useRouter();
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
@@ -38,8 +49,13 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [error, setError] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<{ target: "pix" | "key"; text: string; tone: "success" | "error" } | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [pixCopiedAt, setPixCopiedAt] = useState<string | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const draftRestoredRef = useRef(false);
 
   const quotasEnabled = campaign.slug !== "sao-francisco-em-racao" && quotas.length > 0;
+  const draftKey = useMemo(() => `impacto-participacao-rascunho-${campaign.slug}`, [campaign.slug]);
 
   const isOpen = useMemo(() => {
     if (campaign.status && campaign.status !== "active") return false;
@@ -48,6 +64,85 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     const ends = campaign.ends_at ? new Date(campaign.ends_at).getTime() : null;
     return (!starts || now >= starts) && (!ends || now <= ends);
   }, [campaign.ends_at, campaign.starts_at, campaign.status]);
+
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    draftRestoredRef.current = true;
+
+    try {
+      const raw = window.localStorage.getItem(draftKey);
+      if (!raw) {
+        setDraftReady(true);
+        return;
+      }
+
+      const draft = JSON.parse(raw) as ParticipationDraft;
+      const availableNumbers = new Set(numbers.filter((item) => item.status === "available").map((item) => item.number));
+      const requestedNumbers = Array.isArray(draft.selectedNumbers) ? draft.selectedNumbers.filter((n) => Number.isFinite(n)) : [];
+      const restoredNumbers = requestedNumbers.filter((n) => availableNumbers.has(n)).sort((a, b) => a - b);
+      const unavailableCount = requestedNumbers.length - restoredNumbers.length;
+      const restoredQuotas = draft.selectedQuotas && typeof draft.selectedQuotas === "object" ? draft.selectedQuotas : {};
+
+      setSelectedNumbers(restoredNumbers);
+      setSelectedQuotas(quotasEnabled ? restoredQuotas : {});
+      setName(draft.name || "");
+      setPhone(draft.phone || "");
+      setEmail(draft.email || "");
+      setConsent(Boolean(draft.consent));
+      setPixCopiedAt(draft.pixCopiedAt || null);
+
+      const hasDraft =
+        restoredNumbers.length > 0 ||
+        Object.keys(restoredQuotas).length > 0 ||
+        Boolean(draft.name) ||
+        Boolean(draft.phone) ||
+        Boolean(draft.email) ||
+        Boolean(draft.pixCopiedAt);
+
+      if (hasDraft) {
+        setDraftNotice(
+          unavailableCount > 0
+            ? "Restauramos sua seleção, mas alguns números escolhidos anteriormente não estão mais disponíveis. Confira os números atuais e envie o comprovante para finalizar."
+            : "Restauramos sua seleção. Se você já fez o Pix no banco, anexe o comprovante para finalizar sua participação."
+        );
+      }
+    } catch {
+      window.localStorage.removeItem(draftKey);
+    } finally {
+      setDraftReady(true);
+    }
+  }, [draftKey, numbers, quotasEnabled]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+
+    const hasDraftData =
+      selectedNumbers.length > 0 ||
+      Object.keys(selectedQuotas).length > 0 ||
+      name.trim() ||
+      phone.trim() ||
+      email.trim() ||
+      consent ||
+      pixCopiedAt;
+
+    if (!hasDraftData) {
+      window.localStorage.removeItem(draftKey);
+      return;
+    }
+
+    const draft: ParticipationDraft = {
+      selectedNumbers,
+      selectedQuotas: quotasEnabled ? selectedQuotas : {},
+      name,
+      phone,
+      email,
+      consent,
+      pixCopiedAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(draftKey, JSON.stringify(draft));
+  }, [consent, draftKey, draftReady, email, name, phone, pixCopiedAt, quotasEnabled, selectedNumbers, selectedQuotas]);
 
   const totalCents = useMemo(() => {
     const numberAmount = selectedNumbers.length * campaign.number_price_cents;
@@ -109,15 +204,31 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     document.body.removeChild(textarea);
   }
 
+  function clearDraft() {
+    setSelectedNumbers([]);
+    setSelectedQuotas({});
+    setName("");
+    setPhone("");
+    setEmail("");
+    setConsent(false);
+    setProof(null);
+    setQrCode(null);
+    setCopyFeedback(null);
+    setPixCopiedAt(null);
+    setDraftNotice(null);
+    window.localStorage.removeItem(draftKey);
+  }
+
   async function copyPix() {
     if (!pixPayload) return;
 
     try {
       await writeToClipboard(pixPayload);
+      setPixCopiedAt(new Date().toISOString());
       setCopyFeedback({
         target: "pix",
         tone: "success",
-        text: "✅ Pix copia e cola copiado! Agora abra o app do seu banco, escolha Pix Copia e Cola e cole o código para pagar.",
+        text: "✅ Pix copia e cola copiado! Agora abra o app do seu banco, escolha Pix Copia e Cola e cole o código para pagar. Ao voltar para esta página, sua seleção ficará salva para você enviar o comprovante.",
       });
     } catch {
       setCopyFeedback({
@@ -170,6 +281,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       const response = await fetch("/api/participate", { method: "POST", body: formData });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Não foi possível registrar sua participação.");
+      window.localStorage.removeItem(draftKey);
       router.push(`/obrigado/${json.token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
@@ -196,12 +308,22 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
                 ? "1) Escolha um ou mais números para participar do sorteio. 2) Se quiser, aumente sua colaboração com cotas extras. 3) Confira o valor total. 4) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 5) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação."
                 : "1) Escolha um ou mais números para participar do sorteio. 2) Confira o valor total. 3) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 4) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação."}
             </p>
-            <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle.%20Gostaria%20de%20falar%20com%20o%20M%C3%A1rcio%20Alexandre." target="_blank" rel="noreferrer">
-              <MessageCircle className="h-4 w-4" /> Preciso falar com o Márcio Alexandre no WhatsApp
+            <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle.%20Gostaria%20de%20falar%20com%20o%20Suporte." target="_blank" rel="noreferrer">
+              <MessageCircle className="h-4 w-4" /> Preciso falar com o Suporte no WhatsApp
             </a>
           </div>
         </div>
       </div>
+
+      {draftNotice ? (
+        <div className="mt-4 rounded-2xl border-2 border-[#f59e0b] bg-[#fff1a8] p-4 text-sm font-extrabold leading-6 text-[#3f2a00]" role="status" aria-live="polite">
+          <p>{draftNotice}</p>
+          <p className="mt-1 font-bold">Por segurança, o comprovante do Pix precisa ser anexado novamente antes de finalizar.</p>
+          <button type="button" className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-black text-[#7c2d12] shadow-sm" onClick={clearDraft}>
+            Limpar seleção e começar novamente
+          </button>
+        </div>
+      ) : null}
 
       {!isOpen ? (
         <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -322,14 +444,14 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
 
       <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4">
         <p className="text-sm font-extrabold text-[var(--brand-dark)]">Está com dificuldade para enviar o comprovante?</p>
-        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Fale com o Márcio Alexandre no WhatsApp antes de finalizar. Ele ajuda você a concluir sua participação com segurança.</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Fale com o Suporte no WhatsApp antes de finalizar. A equipe ajuda você a concluir sua participação com segurança.</p>
         <a
           className="btn-secondary mt-3"
-          href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20M%C3%A1rcio%20Alexandre%21%20Preciso%20de%20ajuda%20para%20enviar%20o%20comprovante%20do%20Pix%20na%20a%C3%A7%C3%A3o%20do%20Impacto%20no%20Controle."
+          href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20Suporte%21%20Preciso%20de%20ajuda%20para%20enviar%20o%20comprovante%20do%20Pix%20na%20a%C3%A7%C3%A3o%20do%20Impacto%20no%20Controle."
           target="_blank"
           rel="noreferrer"
         >
-          <MessageCircle className="h-4 w-4" /> Preciso falar com o Márcio Alexandre no WhatsApp
+          <MessageCircle className="h-4 w-4" /> Preciso falar com o Suporte no WhatsApp
         </a>
       </div>
 

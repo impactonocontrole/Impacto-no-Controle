@@ -34,7 +34,7 @@ function campaignStatusNotice(status: string) {
   if (normalizedStatus === "paused") {
     return {
       title: "Campanha pausada no momento",
-      text: "As novas participações estão temporariamente suspensas. Para saber quando a ação será retomada ou tirar dúvidas, fale com o Márcio Alexandre pelo WhatsApp.",
+      text: "As novas participações estão temporariamente suspensas. Para saber quando a ação será retomada ou tirar dúvidas, fale com o Suporte pelo WhatsApp.",
     };
   }
 
@@ -99,11 +99,11 @@ export default async function CampaignPage({ params }: PageProps) {
             <p className="mt-2 leading-7 text-[var(--muted)]">{statusNotice.text}</p>
             <a
               className="btn-primary mt-4 !w-auto"
-              href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20M%C3%A1rcio%20Alexandre%21%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20a%20campanha%20S%C3%A3o%20Francisco%20em%20A%C3%A7%C3%A3o."
+              href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20Suporte%21%20Gostaria%20de%20informa%C3%A7%C3%B5es%20sobre%20a%20campanha%20S%C3%A3o%20Francisco%20em%20A%C3%A7%C3%A3o."
               target="_blank"
               rel="noreferrer"
             >
-              <MessageCircle className="h-4 w-4" /> Falar com o Márcio Alexandre no WhatsApp
+              <MessageCircle className="h-4 w-4" /> Falar com o Suporte no WhatsApp
             </a>
           </section>
         ) : null}
@@ -128,11 +128,11 @@ export default async function CampaignPage({ params }: PageProps) {
               {canParticipate ? (
                 <a
                   className="btn-primary mt-4 !w-auto"
-                  href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20M%C3%A1rcio%20Alexandre%21%20Tenho%20d%C3%BAvidas%20sobre%20a%20a%C3%A7%C3%A3o%20S%C3%A3o%20Francisco%20em%20A%C3%A7%C3%A3o."
+                  href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20Suporte%21%20Tenho%20d%C3%BAvidas%20sobre%20a%20a%C3%A7%C3%A3o%20S%C3%A3o%20Francisco%20em%20A%C3%A7%C3%A3o."
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <MessageCircle className="h-4 w-4" /> Dúvidas: fale com o Márcio Alexandre no WhatsApp
+                  <MessageCircle className="h-4 w-4" /> Dúvidas: fale com o Suporte no WhatsApp
                 </a>
               ) : null}
             </div>
@@ -190,7 +190,7 @@ export default async function CampaignPage({ params }: PageProps) {
             ) : (
               <div className="card p-5">
                 <h2 className="text-2xl font-black text-[var(--brand-dark)]">Participações indisponíveis</h2>
-                <p className="mt-2 leading-7 text-[var(--muted)]">No momento, esta campanha não está recebendo novas aquisições de números. Para mais informações, use o botão de WhatsApp acima e fale com o Márcio Alexandre.</p>
+                <p className="mt-2 leading-7 text-[var(--muted)]">No momento, esta campanha não está recebendo novas aquisições de números. Para mais informações, use o botão de WhatsApp acima e fale com o Suporte.</p>
               </div>
             )}
           </div>

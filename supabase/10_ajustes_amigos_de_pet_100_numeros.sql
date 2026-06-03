@@ -136,7 +136,7 @@ A imagem de São Francisco foi doada e será sorteada entre os participantes. Ca
 
 A nossa meta ideal é arrecadar R$ 650,00, valor que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.
 
-Para facilitar a participação, vamos utilizar o sistema Impacto no Controle, solução prática, rápida e segura da empresa Automação Extrema (https://automacao-extrema.vercel.app/) do Márcio Alexandre.
+Para facilitar a participação, vamos utilizar o sistema Impacto no Controle, solução prática, rápida e segura da empresa Automação Extrema (https://automacao-extrema.vercel.app/).
 
 Para participar, basta acessar o link abaixo, escolher o número, e a própria página irá gerar um QR Code para pagamento diretamente no CNPJ do Amigos de Pet.
 
@@ -144,7 +144,7 @@ Para participar, basta acessar o link abaixo, escolher o número, e a própria p
 
 Depois de pagar pelo seu banco, você mesmo envia o comprovante pela página da ação. Assim, a contabilidade já fica organizada na hora e todos já podem acompanhar.
 
-Caso alguém tenha qualquer dúvida, pode falar com o Márcio Alexandre, que ajudará no processo.
+Caso alguém tenha qualquer dúvida, pode falar com o Suporte, que ajudará no processo.
 
 A campanha ficará aberta até o dia 24/06/2026. No dia 25/06/2026, colocaremos todos os nomes em uma caixa, gravaremos o sorteio e publicaremos o vídeo aqui para todos acompanharem.
 
