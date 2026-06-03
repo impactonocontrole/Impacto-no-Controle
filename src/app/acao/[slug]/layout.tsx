@@ -3,20 +3,20 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "São Francisco em Ação | Impacto no Controle",
   description:
-    "Participe da ação São Francisco em Ação: escolha números, contribua com cotas de amor, faça o Pix e acompanhe a arrecadação em ração para cães e gatos.",
+    "Participe da ação São Francisco em Ação da ONG Amigos de Pet: escolha seu número, faça o Pix e acompanhe a arrecadação em ração para cães e gatos.",
   openGraph: {
     title: "São Francisco em Ação",
     description:
-      "Ajude a transformar a imagem de São Francisco em ração para cães e gatos. Escolha seu número, faça o Pix e acompanhe a prestação de contas.",
+      "Ajude a ONG Amigos de Pet a transformar a imagem de São Francisco em ração para cães e gatos. Escolha seu número, faça o Pix e acompanhe a ação.",
     url: "/acao/sao-francisco-em-racao",
     siteName: "Impacto no Controle",
     type: "website",
     images: [
       {
-        url: "/images/sao-francisco-og.jpg",
+        url: "/images/amigos-de-pet-og.jpg",
         width: 1200,
         height: 630,
-        alt: "Imagem de São Francisco para ação solidária de ração",
+        alt: "São Francisco em Ação - ONG Amigos de Pet",
       },
     ],
   },
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "São Francisco em Ação",
     description:
-      "Ajude a transformar a imagem de São Francisco em ração para cães e gatos.",
-    images: ["/images/sao-francisco-og.jpg"],
+      "Ajude a ONG Amigos de Pet a transformar a imagem de São Francisco em ração para cães e gatos.",
+    images: ["/images/amigos-de-pet-og.jpg"],
   },
 };
 

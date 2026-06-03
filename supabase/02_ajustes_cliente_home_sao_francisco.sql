@@ -1,15 +1,15 @@
--- Impacto no Controle - Ajustes: área do cliente, imagens, campanha São Francisco em Ação e acesso Sementinha Petz
+-- Impacto no Controle - Ajustes: área do cliente, imagens, campanha São Francisco em Ação e acesso ONG Amigos de Pet
 -- Rode no SQL Editor do Supabase após já ter executado o script inicial.
 
 -- 1) Atualizar cliente piloto com logo e dados visuais
 update public.clients
 set
-  logo_url = '/images/logo-sementinha-petz.jpeg',
+  logo_url = '/images/amigos-de-pet-icon.jpg',
   primary_color = '#2f5d3a',
   secondary_color = '#d6a84f',
   responsible_email = coalesce(responsible_email, 'impactonocontrole@gmail.com'),
   updated_at = now()
-where slug = 'sementinha-petz';
+where slug = 'amigos-de-pet';
 
 -- 2) Atualizar campanha piloto para São Francisco em Ação
 update public.campaigns
@@ -22,21 +22,21 @@ set
   prize_image_url = '/images/sao-francisco.jpeg',
   main_image_url = '/images/sao-francisco.jpeg',
   status = 'active',
-  number_count = 80,
+  number_count = 100,
   number_price_cents = 1000,
   target_amount_cents = 65000,
   extended_amount_cents = 80000,
   impact_unit = 'kg de ração',
   impact_value_cents = 1344,
-  pix_key = '58.392.598/0001-91',
-  pix_receiver_name = 'TUCXA',
+  pix_key = '38.626.039/0001-91',
+  pix_receiver_name = 'AMIGOS DE PET',
   pix_city = 'Campinas',
-  regulation_text = 'Ação solidária com 80 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.',
+  regulation_text = 'Ação solidária com 100 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.',
   data_consent_text = 'Estou ciente de que meus dados serão usados para confirmar minha participação nesta ação e para facilitar futuras ações solidárias, sem necessidade de preencher tudo novamente. Posso solicitar remoção depois.',
   updated_at = now()
 where slug = 'sao-francisco-em-racao';
 
--- 3) Garantir 80 números na campanha
+-- 3) Garantir 100 números na campanha
 insert into public.campaign_numbers (campaign_id, number)
 select ca.id, gs.number
 from public.campaigns ca
@@ -84,14 +84,14 @@ join public.clients cl on cl.id = ca.client_id;
 
 grant select on public.campaigns_public to anon, authenticated;
 
--- 5) Vincular usuário do cliente Sementinha Petz ao cliente correto
--- Importante: antes, crie o usuário em Authentication > Users com o e-mail sementinhapetz@gmail.com.
+-- 5) Vincular usuário do cliente ONG Amigos de Pet ao cliente correto
+-- Importante: antes, crie o usuário em Authentication > Users com o e-mail amigosdepet@gmail.com.
 insert into public.app_users (auth_user_id, client_id, role, name, email)
-select u.id, cl.id, 'client_admin', 'Sementinha Petz', 'sementinhapetz@gmail.com'
+select u.id, cl.id, 'client_admin', 'ONG Amigos de Pet', 'amigosdepet@gmail.com'
 from auth.users u
 cross join public.clients cl
-where u.email = 'sementinhapetz@gmail.com'
-  and cl.slug = 'sementinha-petz'
+where u.email = 'amigosdepet@gmail.com'
+  and cl.slug = 'amigos-de-pet'
 on conflict (auth_user_id) do update
 set client_id = excluded.client_id,
     role = excluded.role,

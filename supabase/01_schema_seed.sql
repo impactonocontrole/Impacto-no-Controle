@@ -33,8 +33,8 @@ create table public.clients (
   name text not null,
   slug text not null unique,
   logo_url text,
-  primary_color text default '#2f5d3a',
-  secondary_color text default '#d6a84f',
+  primary_color text default '#A91583',
+  secondary_color text default '#F45AC0',
   pix_key text,
   pix_receiver_name text,
   pix_city text default 'Campinas',
@@ -460,13 +460,13 @@ insert into public.clients (
   responsible_email,
   privacy_text
 ) values (
-  'Sementinha Petz / Tucxa',
-  'sementinha-petz',
-  '/images/logo-sementinha-petz.jpeg',
-  '#2f5d3a',
-  '#d6a84f',
-  '58.392.598/0001-91',
-  'TUCXA',
+  'ONG Amigos de Pet',
+  'amigos-de-pet',
+  '/images/amigos-de-pet-icon.jpg',
+  '#A91583',
+  '#F45AC0',
+  '38.626.039/0001-91',
+  'AMIGOS DE PET',
   'Campinas',
   'Laércio',
   'impactonocontrole@gmail.com',
@@ -500,10 +500,10 @@ insert into public.campaigns (
 select
   cl.id,
   'sao-francisco-em-racao',
-  'numbers_quotas',
+  'numbers',
   'São Francisco em Ação',
   '40 kg de amor: transforme uma imagem de São Francisco em alimento real para cães e gatos.',
-  'A imagem de São Francisco foi doada pela Claudia, da corrente. A proposta é transformar essa doação em ração para cães e gatos, com transparência, carinho e prestação de contas para todos que participarem.',
+  'A imagem de São Francisco foi doada e será sorteada entre os participantes. A proposta é transformar essa doação em ração para cães e gatos, com transparência, carinho e prestação de contas para todos que participarem.',
   'Imagem de São Francisco',
   'Ao participar da ação com números, você concorre à imagem de São Francisco doada pela Claudia. Mais do que o prêmio, o objetivo é alimentar cães e gatos que precisam.',
   '/images/sao-francisco.jpeg',
@@ -513,15 +513,15 @@ select
   80000,
   'kg de ração',
   1344,
-  80,
+  100,
   1000,
-  '58.392.598/0001-91',
-  'TUCXA',
+  '38.626.039/0001-91',
+  'AMIGOS DE PET',
   'Campinas',
-  'Ação solidária com 80 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.',
+  'Ação solidária com 100 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível. A campanha encerra-se em 24/06/2026. O sorteio será feito em 25/06/2026 e será divulgado vídeo com o número e o nome do ganhador.',
   'Estou ciente de que meus dados serão usados para confirmar minha participação nesta ação e para facilitar futuras ações solidárias, sem necessidade de preencher tudo novamente. Posso solicitar remoção depois.'
 from public.clients cl
-where cl.slug = 'sementinha-petz';
+where cl.slug = 'amigos-de-pet';
 
 insert into public.campaign_quotas (campaign_id, title, description, amount_cents, impact_qty, sort_order)
 select ca.id, '1 kg de amor', 'Ajuda simbólica equivalente a aproximadamente 1 kg de ração.', 1500, 1, 1 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
@@ -533,18 +533,29 @@ union all
 select ca.id, '10 kg de amor', 'Cota especial para padrinhos da ração.', 15000, 10, 4 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao';
 
 insert into public.message_templates (campaign_id, channel, purpose, title, body, sort_order)
-select ca.id, 'whatsapp', 'launch', 'Mensagem de lançamento', $$Pessoal, estamos iniciando a ação São Francisco em Ação 🐾
+select ca.id, 'whatsapp', 'launch', 'Mensagem de lançamento', $$Bom dia, pessoal!
 
-A imagem de São Francisco foi doada pela Claudia e queremos transformar essa doação em ração para cães e gatos.
+Estamos iniciando a ação São Francisco em Ação 🐾, uma campanha especial para transformar carinho em alimento real para cães e gatos.
 
-Cada número para participar do sorteio custa R$ 10,00. A meta ideal é chegar em R$ 650,00, o que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.
+A imagem de São Francisco foi doada e será sorteada entre os participantes. Cada número da rifa custa R$ 10,00.
 
-Participe pela página da ação:
-https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao
+A nossa meta ideal é arrecadar R$ 650,00, valor que representa aproximadamente 40 kg ou mais de ração, dependendo da compra.
 
-A campanha encerra em 24/06/2026. O sorteio será feito em 25/06/2026, com divulgação em vídeo do número e nome do ganhador.
+Para facilitar a participação, vamos utilizar o sistema Impacto no Controle, solução prática, rápida e segura da empresa Automação Extrema (https://automacao-extrema.vercel.app/) do Márcio Alexandre.
 
-Mais do que concorrer ao prêmio, a ideia é transformar carinho em alimento real.$$,
+Para participar, basta acessar o link abaixo, escolher o número, e a própria página irá gerar um QR Code para pagamento diretamente no CNPJ do Amigos de Pet.
+
+[LINK_ACAO]
+
+Depois de pagar pelo seu banco, você mesmo envia o comprovante pela página da ação. Assim, a contabilidade já fica organizada na hora e todos já podem acompanhar.
+
+Caso alguém tenha qualquer dúvida, pode falar com o Márcio Alexandre, que ajudará no processo.
+
+A campanha ficará aberta até o dia 24/06/2026. No dia 25/06/2026, colocaremos todos os nomes em uma caixa, gravaremos o sorteio e publicaremos o vídeo aqui para todos acompanharem.
+
+Mais do que concorrer ao prêmio, essa ação é uma forma de transformar amor, fé e solidariedade em ração para quem precisa.
+
+Boa sorte a todos e muito obrigado pela participação! 🙏🐾$$,
 1
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
@@ -552,23 +563,29 @@ select ca.id, 'whatsapp', 'progress', 'Mensagem de andamento', $$Atualização d
 
 Já arrecadamos [VALOR], o que representa aproximadamente [KG] kg de ração para cães e gatos.
 
-Faltam [FALTA] para bater a meta ideal. Quem ainda quiser participar pode escolher um número disponível.
+A meta ideal é R$ 650,00. Faltam [FALTA] para bater essa meta.
 
-Acompanhe ou participe aqui:
-https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao
+Quem ainda quiser participar pode escolher um número disponível por R$ 10,00 na página da ação:
 
-Obrigado a todos que já ajudaram. A prestação de contas será compartilhada ao final.$$,
+[LINK_ANDAMENTO]
+
+A campanha encerra em 24/06/2026 e o sorteio será em 25/06/2026, com vídeo do número e nome do ganhador.
+
+Gratidão a todos que já ajudaram a transformar amor em alimento real. 🙏🐾$$,
 2
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
 select ca.id, 'whatsapp', 'last_call', 'Última chamada', $$Última chamada para a ação São Francisco em Ação 🐾
 
-Estamos perto de fechar a campanha. Ainda dá tempo de escolher um número disponível.
+A campanha encerra em 24/06/2026. Ainda dá tempo de escolher um número por R$ 10,00 e participar do sorteio da imagem de São Francisco.
 
-Cada número ajuda a transformar a imagem de São Francisco em ração para cães e gatos.
+O sorteio será feito em 25/06/2026, com divulgação em vídeo do número e nome do ganhador.
 
-Participe ou compartilhe este link com alguém que também ame essa causa:
-https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao$$,
+Participe ou compartilhe com alguém que também ama essa causa:
+
+[LINK_ULTIMA_CHAMADA]
+
+Mais do que concorrer ao prêmio, essa ação transforma fé, amor e solidariedade em ração para cães e gatos. 🙏🐾$$,
 3
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao'
 union all
@@ -576,10 +593,13 @@ select ca.id, 'whatsapp', 'accountability', 'Prestação de contas', $$Prestaç�
 
 Arrecadamos [VALOR_FINAL] e isso foi transformado em [KG_FINAL] kg de ração para cães e gatos.
 
-Nossa gratidão a todos que participaram, divulgaram e ajudaram. A imagem de São Francisco cumpriu seu propósito: virar alimento, cuidado e amor em ação.
+O sorteio foi realizado e divulgado em vídeo, com o número e o nome do ganhador.
+
+Nossa gratidão a todos que participaram, divulgaram e ajudaram a transformar amor, fé e solidariedade em alimento real.
 
 Acompanhe a página da ação:
-https://impacto-no-controle.vercel.app/acao/sao-francisco-em-racao#prestacao-de-contas$$,
+
+[LINK_PRESTACAO]$$,
 4
 from public.campaigns ca where ca.slug = 'sao-francisco-em-racao';
 
@@ -593,13 +613,13 @@ from auth.users u
 where u.email = 'impactonocontrole@gmail.com'
 on conflict (auth_user_id) do update set role = excluded.role, name = excluded.name, email = excluded.email;
 
--- VINCULAR USUÁRIO CLIENTE SEMENTINHA PETZ -----------------------------------
--- 1) No Supabase, crie o usuário sementinhapetz@gmail.com em Authentication > Users.
--- 2) Rode este bloco para vincular o login ao cliente Sementinha Petz / Tucxa.
+-- VINCULAR USUÁRIO CLIENTE AMIGOS DE PET -----------------------------------
+-- 1) No Supabase, crie o usuário amigosdepet@gmail.com em Authentication > Users.
+-- 2) Rode este bloco para vincular o login ao cliente ONG Amigos de Pet.
 insert into public.app_users (auth_user_id, client_id, role, name, email)
-select u.id, cl.id, 'client_admin', 'Sementinha Petz', 'sementinhapetz@gmail.com'
+select u.id, cl.id, 'client_admin', 'ONG Amigos de Pet', 'amigosdepet@gmail.com'
 from auth.users u
 cross join public.clients cl
-where u.email = 'sementinhapetz@gmail.com'
-  and cl.slug = 'sementinha-petz'
+where u.email = 'amigosdepet@gmail.com'
+  and cl.slug = 'amigos-de-pet'
 on conflict (auth_user_id) do update set client_id = excluded.client_id, role = excluded.role, name = excluded.name, email = excluded.email;

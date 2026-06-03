@@ -1,6 +1,6 @@
 -- Impacto no Controle - Ajustes da campanha Sao Francisco em Acao
 -- Rode no Supabase > SQL Editor.
--- Objetivo: manter a campanha focada nos 80 numeros, atualizar datas e mensagens.
+-- Objetivo: manter a campanha focada nos 100 numeros, atualizar datas e mensagens.
 
 begin;
 
@@ -8,13 +8,13 @@ update public.campaigns
 set
   ends_at = '2026-06-24 23:59:59-03'::timestamptz,
   subtitle = '40 kg de amor: transforme uma imagem de São Francisco em alimento real para cães e gatos.',
-  regulation_text = 'Ação solidária com 80 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.
+  regulation_text = 'Ação solidária com 100 números a R$ 10,00 cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.
 
 A campanha encerra-se em 24/06/2026. O sorteio será feito em 25/06/2026 e será divulgado vídeo com o número e o nome do ganhador.'
 where slug = 'sao-francisco-em-racao';
 
 -- Mantém as cotas cadastradas para histórico/outros usos, mas a página pública desta campanha
--- foi ajustada no front-end para focar apenas na aquisição dos 80 números.
+-- foi ajustada no front-end para focar apenas na aquisição dos 100 números.
 
 -- Atualizar mensagens prontas de WhatsApp para refletir o foco nos números e a data de sorteio.
 delete from public.message_templates
@@ -26,7 +26,7 @@ select ca.id, 'whatsapp', 'launch', 'Mensagem de lançamento', $$Pessoal, estamo
 
 A imagem de São Francisco foi doada pela Claudia e queremos transformar essa doação em ração para cães e gatos.
 
-Cada número para participar do sorteio custa R$ 10,00. São 80 números disponíveis, e cada participação ajuda a transformar essa imagem em alimento real.
+Cada número para participar do sorteio custa R$ 10,00. São 100 números disponíveis, e cada participação ajuda a transformar essa imagem em alimento real.
 
 A campanha encerra em 24/06/2026. O sorteio será feito em 25/06/2026, com divulgação em vídeo do número e nome do ganhador.
 

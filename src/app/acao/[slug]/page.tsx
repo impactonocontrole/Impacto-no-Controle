@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
@@ -81,11 +82,16 @@ export default async function CampaignPage({ params }: PageProps) {
   const regulation = publicRegulationText(campaign.regulation_text);
   const statusNotice = campaignStatusNotice(normalizedStatus);
   const canParticipate = normalizedStatus === "active";
+  const campaignTheme = {
+    "--brand": campaign.client_primary_color || "#A91583",
+    "--brand-dark": campaign.client_primary_color || "#8A0F6B",
+    "--accent": campaign.client_secondary_color || "#F45AC0",
+  } as CSSProperties;
 
   return (
     <>
       <PublicHeader />
-      <main className="container-page pb-6 pt-3 md:pb-10 md:pt-4">
+      <main className="container-page pb-6 pt-3 md:pb-10 md:pt-4" style={campaignTheme}>
         {statusNotice ? (
           <section className="mb-5 rounded-3xl border border-[var(--border)] bg-[#fff8e8] p-5 shadow-sm">
             <span className="badge">Atenção</span>
