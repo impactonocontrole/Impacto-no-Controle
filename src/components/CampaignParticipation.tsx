@@ -30,24 +30,6 @@ type ParticipationDraft = {
   updatedAt?: string;
 };
 
-function whatsappPhoneLink(phone: string) {
-  const digits = normalizePhone(phone);
-  if (!digits) return "";
-  if (digits.startsWith("55")) return digits;
-  return digits.length >= 10 ? `55${digits}` : digits;
-}
-
-function buildReservationWhatsAppMessage(input: {
-  name: string;
-  campaignTitle: string;
-  reservationUrl: string;
-  numbers: number[];
-  amountCents: number;
-}) {
-  const numbers = input.numbers.length ? input.numbers.map((n) => String(n).padStart(2, "0")).join(", ") : "sem números";
-  return `Olá, ${input.name}! Sua reserva na ação ${input.campaignTitle} foi criada.\n\nNúmeros reservados: ${numbers}\nValor: ${formatMoneyFromCents(input.amountCents)}\n\nAcesse este link para fazer o Pix, enviar o comprovante e acompanhar sua participação:\n${input.reservationUrl}\n\nDica: depois de pagar no banco, volte por este mesmo link e envie o comprovante.`;
-}
-
 export function CampaignParticipation({ campaign, numbers, quotas }: { campaign: Campaign; numbers: NumberItem[]; quotas: Quota[] }) {
   const router = useRouter();
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
@@ -182,9 +164,6 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     if (normalizePhone(phone).length < 10) return setError("Informe um celular válido com DDD.");
     if (!consent) return setError("Confirme o aviso de uso dos dados para continuar.");
 
-    const whatsappPhone = whatsappPhoneLink(phone);
-    const whatsappWindow = whatsappPhone ? window.open("", "_blank") : null;
-
     setLoading(true);
     try {
       const response = await fetch("/api/reservations", {
@@ -202,27 +181,10 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Não foi possível reservar seus números.");
 
-      const reservationUrl = `${window.location.origin}/reserva/${json.token}`;
-      const whatsappMessage = buildReservationWhatsAppMessage({
-        name: name.trim(),
-        campaignTitle: campaign.title,
-        reservationUrl,
-        numbers: selectedNumbers,
-        amountCents: totalCents,
-      });
-      const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}` : "";
-
       window.localStorage.removeItem(draftKey);
-      if (whatsappUrl) {
-        window.sessionStorage.setItem(`impacto-whatsapp-reserva-${json.token}`, whatsappUrl);
-        if (whatsappWindow) whatsappWindow.location.href = whatsappUrl;
-        else window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      } else if (whatsappWindow) {
-        whatsappWindow.close();
-      }
+      window.sessionStorage.setItem(`impacto-reserva-criada-${json.token}`, "1");
       router.push(`/reserva/${json.token}`);
     } catch (err) {
-      if (whatsappWindow) whatsappWindow.close();
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setLoading(false);
     }
@@ -243,7 +205,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
           <div>
             <p className="font-extrabold">Como funciona</p>
             <p className="mt-1">
-              1) Escolha seus números. 2) Informe seus dados. 3) Toque em Reservar números e gerar Pix. 4) Acesse o link enviado para seu WhatsApp. 5) Faça o Pix e salve o comprovante. 6) Clique novamente no link recebido pelo WhatsApp e envie o comprovante. A organização irá conferir o pagamento e confirmar sua participação.
+              1) Escolha seus números. 2) Informe seus dados. 3) Toque em Reservar números e gerar Pix. 4) Na próxima tela, salve o link da reserva no WhatsApp. 5) Faça o Pix e salve o comprovante. 6) Volte pelo link da reserva e envie o comprovante. A organização irá conferir o pagamento e confirmar sua participação.
             </p>
             <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle.%20Gostaria%20de%20falar%20com%20o%20Suporte." target="_blank" rel="noreferrer">
               <MessageCircle className="h-4 w-4" /> Preciso falar com o Suporte no WhatsApp

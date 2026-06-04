@@ -62,32 +62,7 @@ Acesse este link para fazer o Pix, enviar o comprovante e acompanhar sua partici
 ${input.reservationUrl}
 
 Depois de pagar no app do banco, volte por este mesmo link e envie o comprovante.`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-}
-
-function buildTrackingWhatsAppUrl(input: {
-  phone?: string | null;
-  name?: string | null;
-  campaignTitle: string;
-  thankYouUrl: string;
-  trackUrl: string;
-  selectedNumbers: number[];
-  amountCents: number;
-}) {
-  const phone = whatsappPhoneLink(input.phone);
-  if (!phone) return "";
-  const numbers = input.selectedNumbers.length ? input.selectedNumbers.map((n) => String(n).padStart(2, "0")).join(", ") : "sem números";
-  const message = `Olá${input.name ? `, ${input.name}` : ""}! Sua participação na ação ${input.campaignTitle} foi registrada.
-
-Números: ${numbers}
-Valor: ${formatMoneyFromCents(input.amountCents)}
-
-Página de obrigado:
-${input.thankYouUrl}
-
-Acompanhe a aprovação da sua participação por este link:
-${input.trackUrl}`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  return `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
 }
 
 export function ReservationPayment({ reservation }: ReservationPaymentProps) {
@@ -95,6 +70,7 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<{ target: "pix" | "key"; text: string; tone: "success" | "error" } | null>(null);
   const [showWhatsAppBox, setShowWhatsAppBox] = useState(false);
+  const [reservationLinkFeedback, setReservationLinkFeedback] = useState<string | null>(null);
   const [proof, setProof] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -104,8 +80,6 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
   const remainingMs = Math.max(0, expiresAt - now);
   const expired = remainingMs <= 0;
   const reservationUrl = typeof window !== "undefined" ? `${window.location.origin}/reserva/${reservation.token}` : `/reserva/${reservation.token}`;
-  const thankYouUrl = typeof window !== "undefined" ? `${window.location.origin}/obrigado/${reservation.token}` : `/obrigado/${reservation.token}`;
-  const trackUrl = typeof window !== "undefined" ? `${window.location.origin}/acompanhar/${reservation.token}` : `/acompanhar/${reservation.token}`;
   const reservationWhatsAppUrl = buildReservationWhatsAppUrl({
     phone: reservation.participantPhone,
     name: reservation.participantName,
@@ -114,16 +88,13 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
     selectedNumbers: reservation.selectedNumbers,
     amountCents: reservation.amountCents,
   });
-  const trackingWhatsAppUrl = buildTrackingWhatsAppUrl({
-    phone: reservation.participantPhone,
-    name: reservation.participantName,
-    campaignTitle: reservation.campaignTitle,
-    thankYouUrl,
-    trackUrl,
-    selectedNumbers: reservation.selectedNumbers,
-    amountCents: reservation.amountCents,
-  });
+  const reservationWhatsAppMessage = `Reserva da ação ${reservation.campaignTitle}
 
+Números: ${reservation.selectedNumbers.length ? reservation.selectedNumbers.map((n) => String(n).padStart(2, "0")).join(", ") : "sem números"}
+Valor: ${formatMoneyFromCents(reservation.amountCents)}
+
+Depois de fazer o Pix no banco, volte neste link para enviar o comprovante:
+${reservationUrl}`;
   const pixPayload = useMemo(() => {
     if (reservation.amountCents <= 0) return "";
     return buildPixPayload({
@@ -142,10 +113,10 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
   }, []);
 
   useEffect(() => {
-    const pending = window.sessionStorage.getItem(`impacto-whatsapp-reserva-${reservation.token}`);
-    if (pending) {
+    const justCreated = window.sessionStorage.getItem(`impacto-reserva-criada-${reservation.token}`);
+    if (justCreated) {
       setShowWhatsAppBox(true);
-      window.sessionStorage.removeItem(`impacto-whatsapp-reserva-${reservation.token}`);
+      window.sessionStorage.removeItem(`impacto-reserva-criada-${reservation.token}`);
     }
   }, [reservation.token]);
 
@@ -197,12 +168,42 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
     }
   }
 
+  async function copyReservationLink() {
+    try {
+      await writeToClipboard(reservationUrl);
+      setReservationLinkFeedback("✅ Link da reserva copiado. Você pode colar em uma conversa do WhatsApp para voltar depois do Pix.");
+    } catch {
+      setReservationLinkFeedback("Não foi possível copiar automaticamente. Copie o link da barra do navegador.");
+    }
+  }
+
+  async function copyReservationMessage() {
+    try {
+      await writeToClipboard(reservationWhatsAppMessage);
+      setReservationLinkFeedback("✅ Mensagem copiada. Abra o WhatsApp e cole em uma conversa para guardar o link da reserva.");
+    } catch {
+      setReservationLinkFeedback("Não foi possível copiar automaticamente. Use o botão de abrir WhatsApp ou copie o link da barra do navegador.");
+    }
+  }
+
+  async function openReservationWhatsApp() {
+    try {
+      await writeToClipboard(reservationWhatsAppMessage);
+      setReservationLinkFeedback("✅ Mensagem copiada. Se o WhatsApp não abrir automaticamente, abra o app e cole a mensagem em uma conversa.");
+    } catch {
+      setReservationLinkFeedback("Se o WhatsApp não abrir automaticamente, copie o link da reserva pela barra do navegador.");
+    }
+
+    if (reservationWhatsAppUrl) {
+      window.location.href = reservationWhatsAppUrl;
+    }
+  }
+
   async function submitProof() {
     setError(null);
     if (expired) return setError("A reserva expirou. Volte para a campanha e escolha seus números novamente.");
     if (!proof) return setError("Inclua o comprovante do Pix para finalizar sua participação.");
 
-    const whatsappWindow = trackingWhatsAppUrl ? window.open("", "_blank") : null;
     setLoading(true);
     try {
       const formData = new FormData();
@@ -212,10 +213,8 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
       const response = await fetch("/api/participate", { method: "POST", body: formData });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Não foi possível enviar o comprovante.");
-      if (whatsappWindow && trackingWhatsAppUrl) whatsappWindow.location.href = trackingWhatsAppUrl;
       router.push(`/obrigado/${json.token}`);
     } catch (err) {
-      if (whatsappWindow) whatsappWindow.close();
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setLoading(false);
     }
@@ -234,15 +233,26 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
           Seus números ficam reservados temporariamente. Faça o Pix e envie o comprovante nesta página para finalizar sua participação.
         </p>
 
-        {reservationWhatsAppUrl ? (
-          <div className={`mt-5 rounded-2xl border-2 p-4 ${showWhatsAppBox ? "border-[#f59e0b] bg-[#fff1a8]" : "bg-white"}`} style={showWhatsAppBox ? undefined : { borderColor: "var(--campaign-border)" }}>
-            <p className="font-black" style={{ color: "var(--campaign-primary)" }}>Salve esta reserva no seu WhatsApp</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">O link da reserva guarda o QR Code, Pix copia e cola e o envio do comprovante. Toque abaixo para deixar o link salvo no WhatsApp informado.</p>
-            <a className="btn-primary mt-3" style={{ background: "var(--campaign-primary)" }} href={reservationWhatsAppUrl} target="_blank" rel="noreferrer">
-              <MessageCircle className="h-4 w-4" /> Enviar link da reserva para meu WhatsApp
-            </a>
+        <div className={`mt-5 rounded-2xl border-2 p-4 ${showWhatsAppBox ? "border-[#f59e0b] bg-[#fff1a8]" : "bg-white"}`} style={showWhatsAppBox ? undefined : { borderColor: "var(--campaign-border)" }}>
+          <p className="font-black" style={{ color: "var(--campaign-primary)" }}>Guarde este link antes de ir ao banco</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            O link desta página permite voltar depois do Pix para enviar o comprovante. Para evitar perder a reserva ao abrir o app do banco, salve este link no WhatsApp ou copie a mensagem abaixo.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {reservationWhatsAppUrl ? (
+              <button type="button" className="btn-primary" style={{ background: "var(--campaign-primary)" }} onClick={openReservationWhatsApp}>
+                <MessageCircle className="h-4 w-4" /> Abrir WhatsApp com o link
+              </button>
+            ) : null}
+            <button type="button" className="btn-secondary" onClick={copyReservationMessage}>Copiar mensagem da reserva</button>
+            <button type="button" className="btn-secondary sm:col-span-2" onClick={copyReservationLink}>Copiar somente o link da reserva</button>
           </div>
-        ) : null}
+          {reservationLinkFeedback ? (
+            <div className="mt-3 rounded-2xl border-2 border-[#f59e0b] bg-[#fff1a8] p-4 text-sm font-black leading-6 text-[#3f2a00]" role="status" aria-live="polite">
+              {reservationLinkFeedback}
+            </div>
+          ) : null}
+        </div>
 
         <div className="mt-5 rounded-2xl border-2 bg-white p-4" style={{ borderColor: "var(--campaign-primary)" }}>
           <div className="flex items-center gap-3">
