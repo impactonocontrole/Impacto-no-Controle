@@ -53,6 +53,14 @@ function campaignPublicUrl(slug: string) {
   return `${window.location.origin}/acao/${slug}`;
 }
 
+const contributionStatusLabel: Record<string, string> = {
+  awaiting_payment: "aguardando pagamento/comprovante",
+  pending_approval: "aguardando conferência do Pix",
+  approved: "pagamento aprovado",
+  rejected: "pagamento não aprovado",
+  canceled: "cancelado",
+};
+
 function buildCampaignMessage(body: string, campaign: any, stats: any) {
   const publicUrl = campaignPublicUrl(campaign.slug);
   const confirmed = Number(stats?.confirmed_amount_cents || 0);
@@ -214,13 +222,6 @@ export function CampaignDetailClient({ id }: { id: string }) {
   }
 
   async function copyAcquisitionWhatsApp(c: any) {
-    const statusLabel: Record<string, string> = {
-      pending_approval: "aguardando conferência do Pix",
-      approved: "pagamento aprovado",
-      rejected: "pagamento não aprovado",
-      canceled: "cancelado",
-    };
-
     const publicUrl = `${window.location.origin}/acao/${detail?.campaign.slug}`;
     const trackUrl = `${window.location.origin}/acompanhar/${c.acompanhamento_token}`;
     const numbers = c.selected_numbers?.length ? c.selected_numbers.map((n: number) => String(n).padStart(2, "0")).join(", ") : "participação por cota/doação";
@@ -228,7 +229,7 @@ export function CampaignDetailClient({ id }: { id: string }) {
       `Olá, ${c.participant_name}! Sua participação na ação ${detail?.campaign.title} foi registrada.`,
       `Valor: ${formatMoneyFromCents(c.amount_cents)}`,
       `Números: ${numbers}`,
-      `Status: ${statusLabel[c.status] || c.status}`,
+      `Status: ${contributionStatusLabel[c.status] || c.status}`,
       `Acompanhe por aqui: ${trackUrl}`,
       `Página da ação: ${publicUrl}`,
       "Gratidão por transformar solidariedade em impacto real."
@@ -314,7 +315,7 @@ export function CampaignDetailClient({ id }: { id: string }) {
                   {detail.contributions.map((c) => (
                     <tr key={c.id}>
                       <td><strong>{c.participant_name}</strong><br /><small>{c.phone} {c.email ? `• ${c.email}` : ""}</small></td>
-                      <td>{c.status}</td>
+                      <td>{contributionStatusLabel[c.status] || c.status}</td>
                       <td>{formatMoneyFromCents(c.amount_cents)}</td>
                       <td>{c.selected_numbers?.join(", ") || "-"}</td>
                       <td>{c.proof_file_path ? <button className="btn-secondary !w-auto !py-2" onClick={() => openProof(c.proof_file_path)}>Abrir</button> : "-"}</td>

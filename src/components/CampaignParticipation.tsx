@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HelpCircle, MessageCircle } from "lucide-react";
-import QRCode from "qrcode";
-import { buildPixPayload } from "@/lib/pix";
 import { formatMoneyFromCents, normalizePhone } from "@/lib/format";
 
 type Campaign = {
@@ -13,9 +11,6 @@ type Campaign = {
   client_name: string;
   title: string;
   number_price_cents: number;
-  pix_key: string;
-  pix_receiver_name: string;
-  pix_city: string;
   data_consent_text: string;
   status?: string;
   starts_at?: string | null;
@@ -32,7 +27,6 @@ type ParticipationDraft = {
   phone?: string;
   email?: string;
   consent?: boolean;
-  pixCopiedAt?: string | null;
   updatedAt?: string;
 };
 
@@ -44,13 +38,9 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
-  const [proof, setProof] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  const [copyFeedback, setCopyFeedback] = useState<{ target: "pix" | "key"; text: string; tone: "success" | "error" } | null>(null);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
-  const [pixCopiedAt, setPixCopiedAt] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const draftRestoredRef = useRef(false);
 
@@ -89,21 +79,14 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       setPhone(draft.phone || "");
       setEmail(draft.email || "");
       setConsent(Boolean(draft.consent));
-      setPixCopiedAt(draft.pixCopiedAt || null);
 
-      const hasDraft =
-        restoredNumbers.length > 0 ||
-        Object.keys(restoredQuotas).length > 0 ||
-        Boolean(draft.name) ||
-        Boolean(draft.phone) ||
-        Boolean(draft.email) ||
-        Boolean(draft.pixCopiedAt);
+      const hasDraft = restoredNumbers.length > 0 || Object.keys(restoredQuotas).length > 0 || Boolean(draft.name) || Boolean(draft.phone) || Boolean(draft.email);
 
       if (hasDraft) {
         setDraftNotice(
           unavailableCount > 0
-            ? "Restauramos sua seleção, mas alguns números escolhidos anteriormente não estão mais disponíveis. Confira os números atuais e envie o comprovante para finalizar."
-            : "Restauramos sua seleção. Se você já fez o Pix no banco, anexe o comprovante para finalizar sua participação."
+            ? "Restauramos sua seleção, mas alguns números escolhidos anteriormente não estão mais disponíveis. Confira os números atuais antes de reservar."
+            : "Restauramos sua seleção. Confira seus dados e toque em ‘Reservar números e gerar Pix’ para continuar."
         );
       }
     } catch {
@@ -116,14 +99,7 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
   useEffect(() => {
     if (!draftReady) return;
 
-    const hasDraftData =
-      selectedNumbers.length > 0 ||
-      Object.keys(selectedQuotas).length > 0 ||
-      name.trim() ||
-      phone.trim() ||
-      email.trim() ||
-      consent ||
-      pixCopiedAt;
+    const hasDraftData = selectedNumbers.length > 0 || Object.keys(selectedQuotas).length > 0 || name.trim() || phone.trim() || email.trim() || consent;
 
     if (!hasDraftData) {
       window.localStorage.removeItem(draftKey);
@@ -137,12 +113,11 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       phone,
       email,
       consent,
-      pixCopiedAt,
       updatedAt: new Date().toISOString(),
     };
 
     window.localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [consent, draftKey, draftReady, email, name, phone, pixCopiedAt, quotasEnabled, selectedNumbers, selectedQuotas]);
+  }, [consent, draftKey, draftReady, email, name, phone, quotasEnabled, selectedNumbers, selectedQuotas]);
 
   const totalCents = useMemo(() => {
     const numberAmount = selectedNumbers.length * campaign.number_price_cents;
@@ -154,24 +129,6 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       : 0;
     return numberAmount + quotaAmount;
   }, [campaign.number_price_cents, quotas, quotasEnabled, selectedNumbers.length, selectedQuotas]);
-
-  const pixPayload = useMemo(() => {
-    if (totalCents <= 0) return "";
-    return buildPixPayload({
-      key: campaign.pix_key,
-      merchantName: campaign.pix_receiver_name || campaign.client_name,
-      merchantCity: campaign.pix_city || "CAMPINAS",
-      amount: totalCents / 100,
-      txid: "IMPACTO",
-      description: campaign.title,
-    });
-  }, [campaign, totalCents]);
-
-  async function generateQr() {
-    if (!pixPayload) return;
-    const dataUrl = await QRCode.toDataURL(pixPayload, { margin: 1, width: 220 });
-    setQrCode(dataUrl);
-  }
 
   function toggleNumber(item: NumberItem) {
     if (item.status !== "available") return;
@@ -187,23 +144,6 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     });
   }
 
-  async function writeToClipboard(text: string) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "");
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
-  }
-
   function clearDraft() {
     setSelectedNumbers([]);
     setSelectedQuotas({});
@@ -211,52 +151,11 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     setPhone("");
     setEmail("");
     setConsent(false);
-    setProof(null);
-    setQrCode(null);
-    setCopyFeedback(null);
-    setPixCopiedAt(null);
     setDraftNotice(null);
     window.localStorage.removeItem(draftKey);
   }
 
-  async function copyPix() {
-    if (!pixPayload) return;
-
-    try {
-      await writeToClipboard(pixPayload);
-      setPixCopiedAt(new Date().toISOString());
-      setCopyFeedback({
-        target: "pix",
-        tone: "success",
-        text: "✅ Pix copia e cola copiado! Agora abra o app do seu banco, escolha Pix Copia e Cola e cole o código para pagar. Ao voltar para esta página, sua seleção ficará salva para você enviar o comprovante.",
-      });
-    } catch {
-      setCopyFeedback({
-        target: "pix",
-        tone: "error",
-        text: "Não foi possível copiar automaticamente. Abra a opção ‘Ver código Pix copia e cola’ e copie o código manualmente.",
-      });
-    }
-  }
-
-  async function copyPixKey() {
-    try {
-      await writeToClipboard(campaign.pix_key.trim());
-      setCopyFeedback({
-        target: "key",
-        tone: "success",
-        text: "✅ Chave Pix copiada! Agora cole a chave no app do banco para pagar.",
-      });
-    } catch {
-      setCopyFeedback({
-        target: "key",
-        tone: "error",
-        text: "Não foi possível copiar automaticamente. Copie manualmente a chave Pix exibida acima.",
-      });
-    }
-  }
-
-  async function submit() {
+  async function reserveNumbers() {
     setError(null);
 
     if (!isOpen) return setError("Esta campanha ainda não está aberta ou já foi encerrada.");
@@ -264,25 +163,25 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
     if (!name.trim()) return setError("Informe seu nome.");
     if (normalizePhone(phone).length < 10) return setError("Informe um celular válido com DDD.");
     if (!consent) return setError("Confirme o aviso de uso dos dados para continuar.");
-    if (!proof) return setError("Inclua o comprovante do Pix antes de finalizar.");
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append("campaign_slug", campaign.slug);
-      formData.append("name", name.trim());
-      formData.append("phone", normalizePhone(phone));
-      formData.append("email", email.trim());
-      formData.append("selected_numbers", JSON.stringify(selectedNumbers));
-      formData.append("selected_quotas", JSON.stringify(quotasEnabled ? selectedQuotas : {}));
-      formData.append("amount_cents", String(totalCents));
-      formData.append("proof", proof);
-
-      const response = await fetch("/api/participate", { method: "POST", body: formData });
+      const response = await fetch("/api/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaign_slug: campaign.slug,
+          name: name.trim(),
+          phone: normalizePhone(phone),
+          email: email.trim(),
+          selected_numbers: selectedNumbers,
+          selected_quotas: quotasEnabled ? selectedQuotas : {},
+        }),
+      });
       const json = await response.json();
-      if (!response.ok) throw new Error(json.error || "Não foi possível registrar sua participação.");
+      if (!response.ok) throw new Error(json.error || "Não foi possível reservar seus números.");
       window.localStorage.removeItem(draftKey);
-      router.push(`/obrigado/${json.token}`);
+      router.push(`/reserva/${json.token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setLoading(false);
@@ -305,8 +204,8 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
             <p className="font-extrabold">Como funciona</p>
             <p className="mt-1">
               {quotasEnabled
-                ? "1) Escolha um ou mais números para participar do sorteio. 2) Se quiser, aumente sua colaboração com cotas extras. 3) Confira o valor total. 4) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 5) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação."
-                : "1) Escolha um ou mais números para participar do sorteio. 2) Confira o valor total. 3) Faça o Pix usando o QR Code, o Pix Copia e Cola ou a chave Pix. 4) Anexe o comprovante antes de finalizar. A organização irá conferir o pagamento e confirmar sua participação."}
+                ? "1) Escolha seus números. 2) Se quiser, aumente sua colaboração com cotas extras. 3) Informe seus dados. 4) Toque em Reservar números e gerar Pix. 5) Na próxima página, faça o Pix e envie o comprovante. A organização irá conferir o pagamento e confirmar sua participação."
+                : "1) Escolha seus números. 2) Informe seus dados. 3) Toque em Reservar números e gerar Pix. 4) Na próxima página, faça o Pix e envie o comprovante. A organização irá conferir o pagamento e confirmar sua participação."}
             </p>
             <a className="mt-3 inline-flex items-center gap-2 font-extrabold underline" href="https://wa.me/5519989848246?text=Ol%C3%A1%21%20Estou%20com%20d%C3%BAvida%20para%20participar%20de%20uma%20a%C3%A7%C3%A3o%20no%20Impacto%20no%20Controle.%20Gostaria%20de%20falar%20com%20o%20Suporte." target="_blank" rel="noreferrer">
               <MessageCircle className="h-4 w-4" /> Preciso falar com o Suporte no WhatsApp
@@ -318,7 +217,6 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       {draftNotice ? (
         <div className="mt-4 rounded-2xl border-2 border-[#f59e0b] bg-[#fff1a8] p-4 text-sm font-extrabold leading-6 text-[#3f2a00]" role="status" aria-live="polite">
           <p>{draftNotice}</p>
-          <p className="mt-1 font-bold">Por segurança, o comprovante do Pix precisa ser anexado novamente antes de finalizar.</p>
           <button type="button" className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-black text-[#7c2d12] shadow-sm" onClick={clearDraft}>
             Limpar seleção e começar novamente
           </button>
@@ -352,28 +250,28 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
       </div>
 
       {quotasEnabled ? (
-      <div className="mt-7 border-t border-[var(--border)] pt-6">
-        <span className="badge">Colaboração extra opcional</span>
-        <h3 className="mt-3 font-extrabold text-[var(--brand-dark)]">2. Quer aumentar sua colaboração?</h3>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          A participação no sorteio da imagem é feita pelos números de <strong>{formatMoneyFromCents(campaign.number_price_cents)}</strong>.
-          As cotas abaixo são opcionais e servem para ampliar o impacto da ação, ajudando a transformar a arrecadação em mais ração para cães e gatos.
-        </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {quotas.map((quota) => (
-            <div key={quota.id} className="rounded-2xl border border-[var(--border)] bg-white p-4">
-              <p className="font-extrabold">{quota.title}</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">{quota.description}</p>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <strong>{formatMoneyFromCents(quota.amount_cents)}</strong>
-                <select className="input max-w-24" disabled={!isOpen} value={selectedQuotas[quota.id] || 0} onChange={(e) => updateQuota(quota.id, Number(e.target.value))}>
-                  {[0, 1, 2, 3, 4, 5, 10].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
+        <div className="mt-7 border-t border-[var(--border)] pt-6">
+          <span className="badge">Colaboração extra opcional</span>
+          <h3 className="mt-3 font-extrabold text-[var(--brand-dark)]">2. Quer aumentar sua colaboração?</h3>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            A participação no sorteio da imagem é feita pelos números de <strong>{formatMoneyFromCents(campaign.number_price_cents)}</strong>.
+            As cotas abaixo são opcionais e servem para ampliar o impacto da ação.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {quotas.map((quota) => (
+              <div key={quota.id} className="rounded-2xl border border-[var(--border)] bg-white p-4">
+                <p className="font-extrabold">{quota.title}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{quota.description}</p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <strong>{formatMoneyFromCents(quota.amount_cents)}</strong>
+                  <select className="input max-w-24" disabled={!isOpen} value={selectedQuotas[quota.id] || 0} onChange={(e) => updateQuota(quota.id, Number(e.target.value))}>
+                    {[0, 1, 2, 3, 4, 5, 10].map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
       ) : null}
 
       <div className="mt-7 rounded-2xl bg-[#eef5ec] p-4">
@@ -402,70 +300,16 @@ export function CampaignParticipation({ campaign, numbers, quotas }: { campaign:
         <span>{campaign.data_consent_text}</span>
       </label>
 
-      <div className="mt-7 rounded-2xl border border-[var(--border)] bg-white p-4">
-        <h3 className="font-extrabold text-[var(--brand-dark)]">3. Faça o Pix</h3>
-        <p className="mt-2 text-sm text-[var(--muted)]">Chave Pix: <strong>{campaign.pix_key}</strong></p>
-        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-          O botão “Pix copia e cola” copia o código completo para colar no aplicativo do banco. Se preferir, use “Copiar chave Pix”.
+      <div className="mt-6 rounded-2xl border-2 border-[var(--brand)] bg-white p-4">
+        <p className="text-sm font-extrabold text-[var(--brand-dark)]">Próximo passo</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+          Ao reservar, seus números ficam indisponíveis temporariamente para outras pessoas. Na próxima tela você verá o QR Code, o Pix copia e cola e o envio do comprovante.
         </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div>
-            <button type="button" className="btn-secondary w-full" onClick={generateQr} disabled={!isOpen || totalCents <= 0}>Gerar QR Code</button>
-          </div>
-          <div>
-            <button type="button" className="btn-primary w-full" onClick={copyPix} disabled={!isOpen || totalCents <= 0}>Copiar Pix copia e cola</button>
-            {copyFeedback?.target === "pix" ? (
-              <div className={`mt-3 rounded-2xl border-2 p-4 text-sm font-extrabold leading-6 shadow-sm ${copyFeedback.tone === "success" ? "border-[#f59e0b] bg-[#fff1a8] text-[#3f2a00]" : "border-red-400 bg-red-50 text-red-800"}`} role="status" aria-live="polite">
-                {copyFeedback.text}
-              </div>
-            ) : null}
-          </div>
-          <div>
-            <button type="button" className="btn-secondary w-full" onClick={copyPixKey} disabled={!isOpen}>Copiar chave Pix</button>
-            {copyFeedback?.target === "key" ? (
-              <div className={`mt-3 rounded-2xl border-2 p-4 text-sm font-extrabold leading-6 shadow-sm ${copyFeedback.tone === "success" ? "border-[#f59e0b] bg-[#fff1a8] text-[#3f2a00]" : "border-red-400 bg-red-50 text-red-800"}`} role="status" aria-live="polite">
-                {copyFeedback.text}
-              </div>
-            ) : null}
-          </div>
-        </div>
-        {pixPayload && totalCents > 0 ? (
-          <details className="mt-3 rounded-2xl border border-[var(--border)] bg-[#fffdf7] p-3 text-sm">
-            <summary className="cursor-pointer font-extrabold text-[var(--brand-dark)]">Ver código Pix copia e cola</summary>
-            <textarea className="input mt-3 min-h-28 text-xs" readOnly value={pixPayload} />
-          </details>
-        ) : null}
-        {qrCode ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="mt-4 rounded-2xl border border-[var(--border)] bg-white p-2" src={qrCode} alt="QR Code Pix" />
-        ) : null}
+        {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
+        <button className="btn-primary mt-4" disabled={loading || !isOpen} onClick={reserveNumbers}>
+          {loading ? "Reservando..." : "Reservar números e gerar Pix"}
+        </button>
       </div>
-
-
-      <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[#fff8e8] p-4">
-        <p className="text-sm font-extrabold text-[var(--brand-dark)]">Está com dificuldade para enviar o comprovante?</p>
-        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">Fale com o Suporte no WhatsApp antes de finalizar. A equipe ajuda você a concluir sua participação com segurança.</p>
-        <a
-          className="btn-secondary mt-3"
-          href="https://wa.me/5519989848246?text=Ol%C3%A1%2C%20Suporte%21%20Preciso%20de%20ajuda%20para%20enviar%20o%20comprovante%20do%20Pix%20na%20a%C3%A7%C3%A3o%20do%20Impacto%20no%20Controle."
-          target="_blank"
-          rel="noreferrer"
-        >
-          <MessageCircle className="h-4 w-4" /> Preciso falar com o Suporte no WhatsApp
-        </a>
-      </div>
-
-      <div className="mt-5">
-        <label className="label">4. Envie o comprovante do Pix *</label>
-        <input className="input" type="file" accept="image/*,.pdf" disabled={!isOpen} onChange={(e) => setProof(e.target.files?.[0] || null)} />
-        <p className="mt-2 text-sm text-[var(--muted)]">O comprovante é obrigatório. O sistema faz uma validação inicial quando consegue ler os dados do arquivo e, depois, a organização confere o pagamento para confirmar sua participação.</p>
-      </div>
-
-      {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">{error}</div> : null}
-
-      <button type="button" className="btn-primary mt-5" onClick={submit} disabled={loading || !isOpen}>
-        {loading ? "Enviando..." : "Finalizar participação"}
-      </button>
     </div>
   );
 }

@@ -84,6 +84,7 @@ export default async function ThankYouPage({ params }: PageProps) {
 
   const selectedNumbers = Array.isArray(data.selected_numbers) ? data.selected_numbers : [];
   const statusLabel: Record<string, string> = {
+    awaiting_payment: "Aguardando pagamento e envio do comprovante",
     pending_approval: "Aguardando conferência do Pix",
     approved: "Pagamento aprovado",
     rejected: "Pagamento não aprovado",

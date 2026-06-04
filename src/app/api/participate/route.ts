@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { buyerDisplayName, formatMoneyFromCents, normalizePhone } from "@/lib/format";
+import { formatMoneyFromCents } from "@/lib/format";
 import { escapeHtml, sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -10,26 +11,8 @@ type EmailStatus = {
   admin?: { sent: boolean; skipped?: boolean; error?: string };
 };
 
-function safeJson<T>(value: FormDataEntryValue | null, fallback: T): T {
-  try {
-    return value ? (JSON.parse(String(value)) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 function getAppUrl(request: Request) {
   return process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-}
-
-function formatSelectedQuotas(selectedQuotas: Record<string, number>, quotaMap: Record<string, { title: string; amount_cents: number }>) {
-  return Object.entries(selectedQuotas)
-    .map(([id, qty]) => {
-      const quota = quotaMap[id];
-      if (!quota || Number(qty) <= 0) return null;
-      return `${qty}x ${quota.title} (${formatMoneyFromCents(quota.amount_cents * Number(qty))})`;
-    })
-    .filter(Boolean) as string[];
 }
 
 function numbersText(numbers: number[]) {
@@ -102,8 +85,7 @@ function validateProofFile(input: {
     return {
       ok: true,
       manualReview: true,
-      warning:
-        "Não foi possível validar automaticamente todos os dados do comprovante. Ele seguirá para conferência manual da organização.",
+      warning: "Não foi possível validar automaticamente todos os dados do comprovante. Ele seguirá para conferência manual da organização.",
     };
   }
 
@@ -124,26 +106,26 @@ function validateProofFile(input: {
   const keyFound = expectedKeyDigits.length >= 5 && digits.includes(expectedKeyDigits);
   const receiverFound = receiverTokens.length > 0 && receiverTokens.some((token) => normalized.includes(token));
 
-  if (!keyFound && !receiverFound) {
-    divergences.push("favorecido ou chave Pix esperada");
-  }
+  if (!keyFound && !receiverFound) divergences.push("favorecido ou chave Pix esperada");
 
   const negativeStatus = /(agendad[oa]|pendente|cancelad[oa]|falhou|estornad[oa]|recusad[oa]|nao efetivad[oa]|não efetivad[oa])/i.test(normalized);
   const positiveStatus = /(efetivad[oa]|concluid[oa]|realizad[oa]|aprovad[oa]|pago|sucesso|confirmad[oa]|transacao concluida|pagamento efetuado)/i.test(normalized);
 
-  if (negativeStatus || !positiveStatus) {
-    divergences.push("status de pagamento efetivado/concluído");
-  }
+  if (negativeStatus || !positiveStatus) divergences.push("status de pagamento efetivado/concluído");
 
   if (divergences.length) {
     return {
       ok: false,
       manualReview: false,
-      warning: `O comprovante enviado não bateu com: ${divergences.join(", ")}. Confira o Pix, envie o comprovante correto e tente novamente. Se o problema persistir, fale com o suporte pelo WhatsApp.`,
+      warning: `O comprovante enviado não bateu com: ${divergences.join(", ")}. Confira o Pix, envie o comprovante correto e tente novamente. Se o problema persistir, fale com o Suporte pelo WhatsApp.`,
     };
   }
 
   return { ok: true, manualReview: false, warning: null };
+}
+
+function proofHash(buffer: Buffer) {
+  return createHash("sha256").update(buffer).digest("hex");
 }
 
 function buildAcquisitionEmailContent(input: {
@@ -164,13 +146,8 @@ function buildAcquisitionEmailContent(input: {
   const qText = quotasText(input.quotas);
   const statusText = "aguardando conferência do Pix pela organização";
 
-  const subject = input.isAdmin
-    ? `Nova aquisição registrada - ${input.campaignTitle}`
-    : `Participação registrada - ${input.campaignTitle}`;
-
-  const intro = input.isAdmin
-    ? `Uma nova aquisição foi registrada na campanha ${input.campaignTitle}.`
-    : `Sua participação foi registrada na campanha ${input.campaignTitle}.`;
+  const subject = input.isAdmin ? `Nova aquisição registrada - ${input.campaignTitle}` : `Participação registrada - ${input.campaignTitle}`;
+  const intro = input.isAdmin ? `Uma nova aquisição foi registrada na campanha ${input.campaignTitle}.` : `Sua participação foi registrada na campanha ${input.campaignTitle}.`;
 
   const text = `${intro}\n\nCliente: ${input.clientName}\nParticipante: ${input.participantName}\nCelular: ${input.participantPhone}\nE-mail: ${input.participantEmail || "não informado"}\nValor: ${formatMoneyFromCents(input.amountCents)}\nNúmeros: ${nText}\nCotas: ${qText}\nStatus: ${statusText}\n\nPágina de obrigado: ${input.thanksUrl}\nAcompanhamento: ${input.trackUrl}\n${input.isAdmin ? `Sistema/Gestão: ${input.systemUrl}\n` : ""}\nSalve o link de acompanhamento nos favoritos do navegador ou crie um atalho na tela inicial do celular.`;
 
@@ -220,23 +197,8 @@ async function sendAcquisitionEmails(input: {
 
   if (input.participantEmail) {
     try {
-      const participantContent = buildAcquisitionEmailContent({
-        ...input,
-        participantEmail: input.participantEmail,
-        participantPhone: input.participantPhone,
-        thanksUrl,
-        trackUrl,
-        systemUrl,
-        isAdmin: false,
-      });
-
-      const result = await sendEmail({
-        to: input.participantEmail,
-        subject: participantContent.subject,
-        text: participantContent.text,
-        html: participantContent.html,
-      });
-
+      const participantContent = buildAcquisitionEmailContent({ ...input, participantEmail: input.participantEmail, participantPhone: input.participantPhone, thanksUrl, trackUrl, systemUrl, isAdmin: false });
+      const result = await sendEmail({ to: input.participantEmail, subject: participantContent.subject, text: participantContent.text, html: participantContent.html });
       status.participant = { sent: true, skipped: Boolean((result as any)?.skipped) };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha desconhecida ao enviar e-mail.";
@@ -248,23 +210,8 @@ async function sendAcquisitionEmails(input: {
   }
 
   try {
-    const adminContent = buildAcquisitionEmailContent({
-      ...input,
-      participantEmail: input.participantEmail,
-      participantPhone: input.participantPhone,
-      thanksUrl,
-      trackUrl,
-      systemUrl,
-      isAdmin: true,
-    });
-
-    const result = await sendEmail({
-      to: adminEmail,
-      subject: adminContent.subject,
-      text: adminContent.text,
-      html: adminContent.html,
-    });
-
+    const adminContent = buildAcquisitionEmailContent({ ...input, participantEmail: input.participantEmail, participantPhone: input.participantPhone, thanksUrl, trackUrl, systemUrl, isAdmin: true });
+    const result = await sendEmail({ to: adminEmail, subject: adminContent.subject, text: adminContent.text, html: adminContent.html });
     status.admin = { sent: true, skipped: Boolean((result as any)?.skipped) };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha desconhecida ao enviar e-mail.";
@@ -275,53 +222,88 @@ async function sendAcquisitionEmails(input: {
   return status;
 }
 
+function formatSelectedQuotas(selectedQuotas: any[], quotaMap: Record<string, { title: string; amount_cents: number }>) {
+  return (selectedQuotas || [])
+    .map((item) => {
+      const quota = quotaMap[item.quota_id];
+      if (!quota || Number(item.qty) <= 0) return null;
+      return `${item.qty}x ${quota.title} (${formatMoneyFromCents(quota.amount_cents * Number(item.qty))})`;
+    })
+    .filter(Boolean) as string[];
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = createSupabaseAdminClient();
     const formData = await request.formData();
-
-    const campaignSlug = String(formData.get("campaign_slug") || "");
-    const name = String(formData.get("name") || "").trim();
-    const phone = normalizePhone(String(formData.get("phone") || ""));
-    const email = String(formData.get("email") || "").trim() || null;
-    const selectedNumbers = safeJson<number[]>(formData.get("selected_numbers"), []);
-    const selectedQuotas = safeJson<Record<string, number>>(formData.get("selected_quotas"), {});
-    const amountCents = Number(formData.get("amount_cents") || 0);
+    const reservationToken = String(formData.get("reservation_token") || "").trim();
     const proof = formData.get("proof");
 
-    if (!campaignSlug) return NextResponse.json({ error: "Campanha inválida." }, { status: 400 });
-    if (!name) return NextResponse.json({ error: "Informe o nome." }, { status: 400 });
-    if (phone.length < 10) return NextResponse.json({ error: "Informe um celular válido." }, { status: 400 });
-    if (!amountCents || amountCents <= 0) return NextResponse.json({ error: "Valor inválido." }, { status: 400 });
+    if (!reservationToken) {
+      return NextResponse.json({ error: "Fluxo atualizado: primeiro reserve os números e depois envie o comprovante pela página da reserva." }, { status: 400 });
+    }
+
     if (!(proof instanceof File)) return NextResponse.json({ error: "Comprovante obrigatório." }, { status: 400 });
 
-    const proofBuffer = Buffer.from(await proof.arrayBuffer());
-
-    const { data: campaign, error: campaignError } = await supabase
-      .from("campaigns")
-      .select("id, client_id, slug, title, status, number_price_cents, starts_at, ends_at, pix_key, pix_receiver_name, clients(name,pix_key,pix_receiver_name)")
-      .eq("slug", campaignSlug)
+    const { data: contribution, error: contributionError } = await supabase
+      .from("contributions")
+      .select(`
+        id,
+        campaign_id,
+        participant_id,
+        status,
+        amount_cents,
+        selected_numbers,
+        selected_quotas,
+        acompanhamento_token,
+        reservation_expires_at,
+        campaigns(id,title,slug,pix_key,pix_receiver_name,clients(name,pix_key,pix_receiver_name)),
+        participants(name,phone,email)
+      `)
+      .eq("acompanhamento_token", reservationToken)
       .maybeSingle();
 
-    if (campaignError || !campaign || campaign.status !== "active") {
-      return NextResponse.json({ error: "Campanha não encontrada ou encerrada." }, { status: 404 });
+    if (contributionError || !contribution) return NextResponse.json({ error: "Reserva não encontrada." }, { status: 404 });
+    if (contribution.status !== "awaiting_payment") return NextResponse.json({ error: "Esta reserva já foi finalizada ou não está disponível." }, { status: 400 });
+
+    const expiresAt = contribution.reservation_expires_at ? new Date(contribution.reservation_expires_at).getTime() : 0;
+    if (!expiresAt || Date.now() > expiresAt) {
+      await supabase.from("contributions").update({ status: "canceled", note: "Reserva expirada antes do envio do comprovante." }).eq("id", contribution.id);
+      await supabase
+        .from("campaign_numbers")
+        .update({ status: "available", participant_id: null, contribution_id: null, buyer_display_name: null, reserved_until: null })
+        .eq("contribution_id", contribution.id)
+        .eq("status", "reserved");
+      return NextResponse.json({ error: "Sua reserva expirou. Volte para a campanha e escolha seus números novamente." }, { status: 400 });
     }
 
-    const now = Date.now();
-    const startsAt = campaign.starts_at ? new Date(campaign.starts_at).getTime() : null;
-    const endsAt = campaign.ends_at ? new Date(campaign.ends_at).getTime() : null;
-    if ((startsAt && now < startsAt) || (endsAt && now > endsAt)) {
-      return NextResponse.json({ error: "Esta campanha ainda não está aberta ou já foi encerrada." }, { status: 400 });
+    const proofBuffer = Buffer.from(await proof.arrayBuffer());
+    const fileHash = proofHash(proofBuffer);
+
+    const { data: duplicate, error: duplicateError } = await supabase
+      .from("contributions")
+      .select("id,acompanhamento_token")
+      .eq("proof_file_hash", fileHash)
+      .neq("id", contribution.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (duplicateError) throw duplicateError;
+    if (duplicate) {
+      return NextResponse.json({ error: "Este comprovante já foi enviado em outra participação. Verifique se selecionou o arquivo correto. Se precisar de ajuda, fale com o Suporte no WhatsApp." }, { status: 409 });
     }
 
-    const clientData = campaign.clients as any;
-    const expectedPixKey = campaign.pix_key || clientData?.pix_key || "";
-    const expectedReceiver = campaign.pix_receiver_name || clientData?.pix_receiver_name || clientData?.name || "";
+    const campaign = Array.isArray((contribution as any).campaigns) ? (contribution as any).campaigns[0] : (contribution as any).campaigns;
+    const client = Array.isArray(campaign?.clients) ? campaign.clients[0] : campaign?.clients;
+    const participant = Array.isArray((contribution as any).participants) ? (contribution as any).participants[0] : (contribution as any).participants;
+
+    const expectedPixKey = campaign?.pix_key || client?.pix_key || "";
+    const expectedReceiver = campaign?.pix_receiver_name || client?.pix_receiver_name || client?.name || "";
     const proofValidation = validateProofFile({
       buffer: proofBuffer,
       fileName: proof.name,
       mimeType: proof.type || "application/octet-stream",
-      expectedAmountCents: amountCents,
+      expectedAmountCents: contribution.amount_cents,
       expectedPixKey,
       expectedReceiver,
     });
@@ -330,103 +312,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: proofValidation.warning }, { status: 400 });
     }
 
-    const uniqueNumbers = Array.from(new Set(selectedNumbers.map(Number).filter((n) => Number.isInteger(n) && n > 0))).sort((a, b) => a - b);
+    const fileExt = proof.name.split(".").pop()?.toLowerCase() || "bin";
+    const filePath = `${contribution.campaign_id}/${contribution.id}-${Date.now()}.${fileExt}`;
 
-    if (uniqueNumbers.length) {
-      const { data: available, error: numError } = await supabase
+    const { error: uploadError } = await supabase.storage.from("proofs").upload(filePath, proofBuffer, { contentType: proof.type || "application/octet-stream", upsert: false });
+    if (uploadError) throw uploadError;
+
+    const { error: updateContributionError } = await supabase
+      .from("contributions")
+      .update({
+        status: "pending_approval",
+        proof_file_path: filePath,
+        proof_file_hash: fileHash,
+        note: proofValidation.manualReview
+          ? "Comprovante enviado. Validação automática inconclusiva; seguir para conferência manual."
+          : "Comprovante enviado e passou pela validação automática inicial.",
+      })
+      .eq("id", contribution.id);
+
+    if (updateContributionError) throw updateContributionError;
+
+    const selectedNumbers = Array.isArray(contribution.selected_numbers) ? contribution.selected_numbers : [];
+    if (selectedNumbers.length) {
+      const reservedUntil = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
+      const { error: updateNumbersError } = await supabase
         .from("campaign_numbers")
-        .select("number,status")
-        .eq("campaign_id", campaign.id)
-        .in("number", uniqueNumbers);
-
-      if (numError) throw numError;
-      if (!available || available.length !== uniqueNumbers.length || available.some((n) => n.status !== "available")) {
-        return NextResponse.json({ error: "Um ou mais números escolhidos já foram reservados. Atualize a página e escolha novamente." }, { status: 409 });
-      }
+        .update({ status: "pending_approval", reserved_until: reservedUntil })
+        .eq("contribution_id", contribution.id)
+        .in("number", selectedNumbers);
+      if (updateNumbersError) throw updateNumbersError;
     }
 
-    const quotaArray = Object.entries(selectedQuotas)
-      .map(([quotaId, qty]) => ({ quota_id: quotaId, qty: Number(qty) }))
-      .filter((item) => item.qty > 0);
-
-    const quotaIds = quotaArray.map((q) => q.quota_id);
+    const selectedQuotas = Array.isArray(contribution.selected_quotas) ? contribution.selected_quotas : [];
+    const quotaIds = selectedQuotas.map((q: any) => q.quota_id).filter(Boolean);
     const { data: quotaRows, error: quotaError } = quotaIds.length
-      ? await supabase.from("campaign_quotas").select("id,title,amount_cents").eq("campaign_id", campaign.id).in("id", quotaIds)
+      ? await supabase.from("campaign_quotas").select("id,title,amount_cents").eq("campaign_id", contribution.campaign_id).in("id", quotaIds)
       : { data: [], error: null };
     if (quotaError) throw quotaError;
 
     const quotaMap = Object.fromEntries((quotaRows || []).map((q: any) => [q.id, { title: q.title, amount_cents: q.amount_cents }]));
     const quotaMessages = formatSelectedQuotas(selectedQuotas, quotaMap);
 
-    const { data: participant, error: participantError } = await supabase
-      .from("participants")
-      .upsert({ client_id: campaign.client_id, name, phone, email, consent_at: new Date().toISOString() }, { onConflict: "client_id,phone" })
-      .select("id")
-      .single();
-
-    if (participantError) throw participantError;
-
-    const contributionType = uniqueNumbers.length && quotaArray.length ? "mixed" : uniqueNumbers.length ? "numbers" : "quota";
-
-    const { data: contribution, error: contributionError } = await supabase
-      .from("contributions")
-      .insert({
-        campaign_id: campaign.id,
-        participant_id: participant.id,
-        type: contributionType,
-        status: "pending_approval",
-        amount_cents: amountCents,
-        selected_numbers: uniqueNumbers,
-        selected_quotas: quotaArray,
-      })
-      .select("id, acompanhamento_token")
-      .single();
-
-    if (contributionError) throw contributionError;
-
-    const fileExt = proof.name.split(".").pop()?.toLowerCase() || "bin";
-    const filePath = `${campaign.id}/${contribution.id}-${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("proofs")
-      .upload(filePath, proofBuffer, { contentType: proof.type || "application/octet-stream", upsert: false });
-
-    if (uploadError) throw uploadError;
-
-    const { error: updateProofError } = await supabase
-      .from("contributions")
-      .update({ proof_file_path: filePath })
-      .eq("id", contribution.id);
-
-    if (updateProofError) throw updateProofError;
-
-    if (uniqueNumbers.length) {
-      const display = buyerDisplayName(name, phone);
-      const reservedUntil = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString();
-      const { error: updateNumbersError } = await supabase
-        .from("campaign_numbers")
-        .update({
-          status: "pending_approval",
-          participant_id: participant.id,
-          contribution_id: contribution.id,
-          buyer_display_name: display,
-          reserved_until: reservedUntil,
-        })
-        .eq("campaign_id", campaign.id)
-        .in("number", uniqueNumbers);
-      if (updateNumbersError) throw updateNumbersError;
-    }
-
     const emailStatus = await sendAcquisitionEmails({
       request,
-      participantEmail: email,
-      participantName: name,
-      participantPhone: phone,
-      campaignId: campaign.id,
-      campaignTitle: campaign.title,
-      clientName: clientData?.name || "Impacto no Controle",
-      amountCents,
-      numbers: uniqueNumbers,
+      participantEmail: participant?.email || null,
+      participantName: participant?.name || "Participante",
+      participantPhone: participant?.phone || "",
+      campaignId: contribution.campaign_id,
+      campaignTitle: campaign?.title || "Campanha",
+      clientName: client?.name || "Impacto no Controle",
+      amountCents: contribution.amount_cents,
+      numbers: selectedNumbers,
       quotas: quotaMessages,
       token: contribution.acompanhamento_token,
     });
@@ -437,11 +373,11 @@ export async function POST(request: Request) {
       email: emailStatus,
       proof_validation: proofValidation.manualReview ? "manual_review" : "validated",
       message: proofValidation.manualReview
-        ? "Participação registrada. O comprovante seguirá para conferência manual da organização."
-        : "Participação registrada. O comprovante passou pela validação inicial e a organização irá conferir o Pix.",
+        ? "Comprovante enviado. Ele seguirá para conferência manual da organização."
+        : "Comprovante enviado. Ele passou pela validação inicial e a organização irá conferir o Pix.",
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Erro ao registrar participação. Tente novamente." }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao enviar comprovante. Tente novamente." }, { status: 500 });
   }
 }

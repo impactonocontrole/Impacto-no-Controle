@@ -84,6 +84,7 @@ export default async function TrackPage({ params }: PageProps) {
   const logoUrl = data.client_logo_url || (isAmigosDePet ? "/images/amigos-de-pet-icon.jpg" : null);
 
   const statusLabel: Record<string, string> = {
+    awaiting_payment: "Aguardando pagamento e envio do comprovante",
     pending_approval: "Aguardando conferência do Pix",
     approved: "Pagamento aprovado",
     rejected: "Pagamento não aprovado",

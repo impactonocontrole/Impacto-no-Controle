@@ -1,0 +1,135 @@
+import type { CSSProperties } from "react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PublicHeader } from "@/components/PublicHeader";
+import { ReservationPayment } from "@/components/ReservationPayment";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+export const revalidate = 0;
+
+type PageProps = { params: Promise<{ token: string }> };
+
+function normalizeColor(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed : fallback;
+}
+
+function hexToRgba(hex: string, alpha: number) {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+export default async function ReservationPage({ params }: PageProps) {
+  const { token } = await params;
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("contributions")
+    .select(`
+      id,
+      acompanhamento_token,
+      status,
+      amount_cents,
+      selected_numbers,
+      selected_quotas,
+      reservation_expires_at,
+      campaigns(
+        id,
+        title,
+        slug,
+        pix_key,
+        pix_receiver_name,
+        pix_city,
+        clients(name, logo_url, primary_color, secondary_color, pix_key, pix_receiver_name, pix_city)
+      )
+    `)
+    .eq("acompanhamento_token", token)
+    .maybeSingle();
+
+  if (error || !data) notFound();
+
+  const campaign = Array.isArray((data as any).campaigns) ? (data as any).campaigns[0] : (data as any).campaigns;
+  const client = Array.isArray(campaign?.clients) ? campaign.clients[0] : campaign?.clients;
+  if (!campaign || !client) notFound();
+
+  const primaryColor = normalizeColor(client.primary_color, "#A91583");
+  const secondaryColor = normalizeColor(client.secondary_color, "#F45AC0");
+  const softBg = hexToRgba(secondaryColor, 0.11);
+  const cardBg = hexToRgba(primaryColor, 0.07);
+  const borderColor = hexToRgba(primaryColor, 0.18);
+  const expiresAt = data.reservation_expires_at ? new Date(data.reservation_expires_at).getTime() : 0;
+  const expired = !expiresAt || Date.now() > expiresAt;
+
+  const theme = {
+    "--campaign-primary": primaryColor,
+    "--campaign-secondary": secondaryColor,
+    "--campaign-soft": softBg,
+    "--campaign-card": cardBg,
+    "--campaign-border": borderColor,
+    "--brand": primaryColor,
+    "--brand-dark": primaryColor,
+    "--accent": secondaryColor,
+  } as CSSProperties;
+
+  const selectedNumbers = Array.isArray(data.selected_numbers) ? data.selected_numbers : [];
+
+  if (data.status === "pending_approval" || data.status === "approved") {
+    return (
+      <>
+        <PublicHeader showAccessLinks={false} />
+        <main className="container-page py-4 md:py-6" style={theme}>
+          <div className="card mx-auto max-w-2xl p-6 text-center" style={{ borderColor }}>
+            <h1 className="text-3xl font-black" style={{ color: primaryColor }}>Comprovante já enviado</h1>
+            <p className="mt-3 leading-7 text-[var(--muted)]">Sua participação já foi registrada. Acompanhe o status pelo link abaixo.</p>
+            <Link className="btn-primary mt-5" style={{ background: primaryColor }} href={`/acompanhar/${token}`}>Acompanhar participação</Link>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  if (data.status !== "awaiting_payment" || expired) {
+    return (
+      <>
+        <PublicHeader showAccessLinks={false} />
+        <main className="container-page py-4 md:py-6" style={theme}>
+          <div className="card mx-auto max-w-2xl p-6 text-center" style={{ borderColor }}>
+            <h1 className="text-3xl font-black" style={{ color: primaryColor }}>Reserva expirada ou indisponível</h1>
+            <p className="mt-3 leading-7 text-[var(--muted)]">Essa reserva não está mais disponível para pagamento. Volte para a campanha e escolha seus números novamente.</p>
+            <Link className="btn-primary mt-5" style={{ background: primaryColor }} href={`/acao/${campaign.slug}`}>Voltar para a campanha</Link>
+          </div>
+        </main>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PublicHeader showAccessLinks={false} />
+      <main className="container-page py-4 md:py-6" style={theme}>
+        <ReservationPayment
+          reservation={{
+            token,
+            campaignTitle: campaign.title,
+            campaignSlug: campaign.slug,
+            clientName: client.name,
+            clientLogoUrl: client.logo_url,
+            primaryColor,
+            secondaryColor,
+            amountCents: data.amount_cents,
+            selectedNumbers,
+            pixKey: campaign.pix_key || client.pix_key || "",
+            pixReceiverName: campaign.pix_receiver_name || client.pix_receiver_name || client.name,
+            pixCity: campaign.pix_city || client.pix_city || "Campinas",
+            reservationExpiresAt: data.reservation_expires_at,
+            status: data.status,
+          }}
+        />
+      </main>
+    </>
+  );
+}
