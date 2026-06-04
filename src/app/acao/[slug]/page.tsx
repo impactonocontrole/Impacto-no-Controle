@@ -5,18 +5,33 @@ import { PublicHeader } from "@/components/PublicHeader";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { formatMoneyFromCents, kgFromAmount } from "@/lib/format";
 import { CampaignParticipation } from "@/components/CampaignParticipation";
+import { CampaignIntroModal } from "@/components/CampaignIntroModal";
 
 type PageProps = { params: Promise<{ slug: string }> };
 
 export const revalidate = 0;
 
-function publicRegulationText(value: string | null | undefined) {
-  return String(value || "")
-    .replace(
-      /\s*Para ações públicas ou de maior alcance, recomenda-se validar as regras aplicáveis a sorteios, promoções e arrecadações\.?/gi,
-      ""
-    )
+type CampaignPublicData = {
+  number_count?: number | null;
+  number_price_cents?: number | null;
+  regulation_text?: string | null;
+};
+
+function publicRegulationText(campaign: CampaignPublicData) {
+  const numberCount = Number(campaign.number_count || 0);
+  const numberPrice = Number(campaign.number_price_cents || 0);
+  const dynamicRule = numberCount > 0 && numberPrice > 0
+    ? `Ação solidária com ${numberCount} números a ${formatMoneyFromCents(numberPrice)} cada. A participação só será confirmada após conferência do Pix pela organização. Caso algum número não seja aprovado, ele poderá voltar a ficar disponível.`
+    : "A participação só será confirmada após conferência do Pix pela organização.";
+
+  const extra = String(campaign.regulation_text || "")
+    .replace(/Ação solidária com\s+\d+\s+números\s+a\s+R\$\s*[\d.,]+\s+cada\.\s*A participação só será confirmada após conferência do Pix pela organização\.\s*Caso algum número não seja aprovado, ele poderá voltar a ficar disponível\.?/gi, "")
+    .replace(/A campanha encerra-se em\s*\d{2}\/\d{2}\/\d{4}\.\s*O sorteio será feito em\s*\d{2}\/\d{2}\/\d{4}[^\n.]*(?:\.|$)/gi, "")
+    .replace(/\s*Para ações públicas ou de maior alcance, recomenda-se validar as regras aplicáveis a sorteios, promoções e arrecadações\.?/gi, "")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
+
+  return extra ? `${dynamicRule}\n\n${extra}` : dynamicRule;
 }
 
 function normalizeCampaignStatus(status: string) {
@@ -79,7 +94,7 @@ export default async function CampaignPage({ params }: PageProps) {
   const target = campaign.target_amount_cents || 1;
   const progress = Math.min(100, Math.round((raised / target) * 100));
   const kg = kgFromAmount(raised, campaign.impact_value_cents || 1);
-  const regulation = publicRegulationText(campaign.regulation_text);
+  const regulation = publicRegulationText(campaign);
   const statusNotice = campaignStatusNotice(normalizedStatus);
   const canParticipate = normalizedStatus === "active";
   const campaignTheme = {
@@ -92,6 +107,16 @@ export default async function CampaignPage({ params }: PageProps) {
     <>
       <PublicHeader />
       <main className="container-page pb-6 pt-3 md:pb-10 md:pt-4" style={campaignTheme}>
+        <CampaignIntroModal
+          campaignSlug={campaign.slug}
+          campaignTitle={campaign.title}
+          clientName={campaign.client_name}
+          enabled={Boolean(campaign.intro_modal_enabled)}
+          title={campaign.intro_modal_title}
+          body={campaign.intro_modal_body}
+          numberCount={campaign.number_count}
+          numberPriceCents={campaign.number_price_cents}
+        />
         {statusNotice ? (
           <section className="mb-5 rounded-3xl border border-[var(--border)] bg-[#fff8e8] p-5 shadow-sm">
             <span className="badge">Atenção</span>

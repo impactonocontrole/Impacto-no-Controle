@@ -87,6 +87,9 @@ export async function PATCH(request: Request, { params }: RouteProps) {
       data_consent_text: toNullableString(body.data_consent_text),
       show_buyer_names: Boolean(body.show_buyer_names),
       reservation_minutes: Math.max(15, Number(body.reservation_minutes || 1440)),
+      intro_modal_enabled: Boolean(body.intro_modal_enabled),
+      intro_modal_title: toNullableString(body.intro_modal_title),
+      intro_modal_body: toNullableString(body.intro_modal_body),
     };
 
     const numberCount = payload.number_count as number;

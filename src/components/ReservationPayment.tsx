@@ -23,6 +23,8 @@ type ReservationPaymentProps = {
     pixCity: string;
     reservationExpiresAt: string;
     status: string;
+    participantName?: string | null;
+    participantPhone?: string | null;
   };
 };
 
@@ -34,10 +36,65 @@ function formatCountdown(ms: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function whatsappPhoneLink(phone?: string | null) {
+  const digits = String(phone || "").replace(/\D/g, "").slice(0, 14);
+  if (!digits) return "";
+  return digits.startsWith("55") ? digits : `55${digits}`;
+}
+
+function buildReservationWhatsAppUrl(input: {
+  phone?: string | null;
+  name?: string | null;
+  campaignTitle: string;
+  reservationUrl: string;
+  selectedNumbers: number[];
+  amountCents: number;
+}) {
+  const phone = whatsappPhoneLink(input.phone);
+  if (!phone) return "";
+  const numbers = input.selectedNumbers.length ? input.selectedNumbers.map((n) => String(n).padStart(2, "0")).join(", ") : "sem números";
+  const message = `Olá${input.name ? `, ${input.name}` : ""}! Sua reserva na ação ${input.campaignTitle} foi criada.
+
+Números reservados: ${numbers}
+Valor: ${formatMoneyFromCents(input.amountCents)}
+
+Acesse este link para fazer o Pix, enviar o comprovante e acompanhar sua participação:
+${input.reservationUrl}
+
+Depois de pagar no app do banco, volte por este mesmo link e envie o comprovante.`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+function buildTrackingWhatsAppUrl(input: {
+  phone?: string | null;
+  name?: string | null;
+  campaignTitle: string;
+  thankYouUrl: string;
+  trackUrl: string;
+  selectedNumbers: number[];
+  amountCents: number;
+}) {
+  const phone = whatsappPhoneLink(input.phone);
+  if (!phone) return "";
+  const numbers = input.selectedNumbers.length ? input.selectedNumbers.map((n) => String(n).padStart(2, "0")).join(", ") : "sem números";
+  const message = `Olá${input.name ? `, ${input.name}` : ""}! Sua participação na ação ${input.campaignTitle} foi registrada.
+
+Números: ${numbers}
+Valor: ${formatMoneyFromCents(input.amountCents)}
+
+Página de obrigado:
+${input.thankYouUrl}
+
+Acompanhe a aprovação da sua participação por este link:
+${input.trackUrl}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
 export function ReservationPayment({ reservation }: ReservationPaymentProps) {
   const router = useRouter();
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<{ target: "pix" | "key"; text: string; tone: "success" | "error" } | null>(null);
+  const [showWhatsAppBox, setShowWhatsAppBox] = useState(false);
   const [proof, setProof] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,6 +103,26 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
   const expiresAt = useMemo(() => new Date(reservation.reservationExpiresAt).getTime(), [reservation.reservationExpiresAt]);
   const remainingMs = Math.max(0, expiresAt - now);
   const expired = remainingMs <= 0;
+  const reservationUrl = typeof window !== "undefined" ? `${window.location.origin}/reserva/${reservation.token}` : `/reserva/${reservation.token}`;
+  const thankYouUrl = typeof window !== "undefined" ? `${window.location.origin}/obrigado/${reservation.token}` : `/obrigado/${reservation.token}`;
+  const trackUrl = typeof window !== "undefined" ? `${window.location.origin}/acompanhar/${reservation.token}` : `/acompanhar/${reservation.token}`;
+  const reservationWhatsAppUrl = buildReservationWhatsAppUrl({
+    phone: reservation.participantPhone,
+    name: reservation.participantName,
+    campaignTitle: reservation.campaignTitle,
+    reservationUrl,
+    selectedNumbers: reservation.selectedNumbers,
+    amountCents: reservation.amountCents,
+  });
+  const trackingWhatsAppUrl = buildTrackingWhatsAppUrl({
+    phone: reservation.participantPhone,
+    name: reservation.participantName,
+    campaignTitle: reservation.campaignTitle,
+    thankYouUrl,
+    trackUrl,
+    selectedNumbers: reservation.selectedNumbers,
+    amountCents: reservation.amountCents,
+  });
 
   const pixPayload = useMemo(() => {
     if (reservation.amountCents <= 0) return "";
@@ -63,6 +140,14 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const pending = window.sessionStorage.getItem(`impacto-whatsapp-reserva-${reservation.token}`);
+    if (pending) {
+      setShowWhatsAppBox(true);
+      window.sessionStorage.removeItem(`impacto-whatsapp-reserva-${reservation.token}`);
+    }
+  }, [reservation.token]);
 
   useEffect(() => {
     if (!pixPayload) return;
@@ -117,6 +202,7 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
     if (expired) return setError("A reserva expirou. Volte para a campanha e escolha seus números novamente.");
     if (!proof) return setError("Inclua o comprovante do Pix para finalizar sua participação.");
 
+    const whatsappWindow = trackingWhatsAppUrl ? window.open("", "_blank") : null;
     setLoading(true);
     try {
       const formData = new FormData();
@@ -126,8 +212,10 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
       const response = await fetch("/api/participate", { method: "POST", body: formData });
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || "Não foi possível enviar o comprovante.");
+      if (whatsappWindow && trackingWhatsAppUrl) whatsappWindow.location.href = trackingWhatsAppUrl;
       router.push(`/obrigado/${json.token}`);
     } catch (err) {
+      if (whatsappWindow) whatsappWindow.close();
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setLoading(false);
     }
@@ -145,6 +233,16 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
         <p className="mt-3 leading-7 text-[var(--muted)]">
           Seus números ficam reservados temporariamente. Faça o Pix e envie o comprovante nesta página para finalizar sua participação.
         </p>
+
+        {reservationWhatsAppUrl ? (
+          <div className={`mt-5 rounded-2xl border-2 p-4 ${showWhatsAppBox ? "border-[#f59e0b] bg-[#fff1a8]" : "bg-white"}`} style={showWhatsAppBox ? undefined : { borderColor: "var(--campaign-border)" }}>
+            <p className="font-black" style={{ color: "var(--campaign-primary)" }}>Salve esta reserva no seu WhatsApp</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted)]">O link da reserva guarda o QR Code, Pix copia e cola e o envio do comprovante. Toque abaixo para deixar o link salvo no WhatsApp informado.</p>
+            <a className="btn-primary mt-3" style={{ background: "var(--campaign-primary)" }} href={reservationWhatsAppUrl} target="_blank" rel="noreferrer">
+              <MessageCircle className="h-4 w-4" /> Enviar link da reserva para meu WhatsApp
+            </a>
+          </div>
+        ) : null}
 
         <div className="mt-5 rounded-2xl border-2 bg-white p-4" style={{ borderColor: "var(--campaign-primary)" }}>
           <div className="flex items-center gap-3">
@@ -209,7 +307,7 @@ export function ReservationPayment({ reservation }: ReservationPaymentProps) {
         <div className="mt-4">
           <label className="label">Comprovante do Pix *</label>
           <input className="input" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" disabled={expired} onChange={(e) => setProof(e.target.files?.[0] || null)} />
-          <p className="mt-2 text-sm text-[var(--muted)]">O sistema bloqueia comprovantes já usados em outra participação e a organização fará a conferência antes da confirmação.</p>
+          <p className="mt-2 text-sm text-[var(--muted)]">O sistema bloqueia comprovantes já usados em outra participação. Quando o arquivo tiver texto legível, também tentará conferir valor, Pix/favorecido e status efetivado. Prints e imagens podem seguir para conferência manual da organização.</p>
         </div>
         {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div> : null}
         <button className="btn-primary mt-4" style={{ background: "var(--campaign-primary)" }} disabled={loading || expired} onClick={submitProof}>

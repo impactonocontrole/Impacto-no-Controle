@@ -45,7 +45,8 @@ export default async function ReservationPage({ params }: PageProps) {
         pix_receiver_name,
         pix_city,
         clients(name, logo_url, primary_color, secondary_color, pix_key, pix_receiver_name, pix_city)
-      )
+      ),
+      participants(name, phone, email)
     `)
     .eq("acompanhamento_token", token)
     .maybeSingle();
@@ -54,6 +55,7 @@ export default async function ReservationPage({ params }: PageProps) {
 
   const campaign = Array.isArray((data as any).campaigns) ? (data as any).campaigns[0] : (data as any).campaigns;
   const client = Array.isArray(campaign?.clients) ? campaign.clients[0] : campaign?.clients;
+  const participant = Array.isArray((data as any).participants) ? (data as any).participants[0] : (data as any).participants;
   if (!campaign || !client) notFound();
 
   const primaryColor = normalizeColor(client.primary_color, "#A91583");
@@ -127,6 +129,8 @@ export default async function ReservationPage({ params }: PageProps) {
             pixCity: campaign.pix_city || client.pix_city || "Campinas",
             reservationExpiresAt: data.reservation_expires_at,
             status: data.status,
+            participantName: participant?.name || null,
+            participantPhone: participant?.phone || null,
           }}
         />
       </main>

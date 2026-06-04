@@ -119,6 +119,9 @@ export function CampaignDetailClient({ id }: { id: string }) {
       data_consent_text: campaign.data_consent_text || "",
       show_buyer_names: campaign.show_buyer_names ?? true,
       reservation_minutes: campaign.reservation_minutes || 1440,
+      intro_modal_enabled: Boolean(campaign.intro_modal_enabled),
+      intro_modal_title: campaign.intro_modal_title || "",
+      intro_modal_body: campaign.intro_modal_body || "",
     });
   }
 
@@ -177,6 +180,9 @@ export function CampaignDetailClient({ id }: { id: string }) {
       data_consent_text: form.data_consent_text,
       show_buyer_names: Boolean(form.show_buyer_names),
       reservation_minutes: Number(form.reservation_minutes || 1440),
+      intro_modal_enabled: Boolean(form.intro_modal_enabled),
+      intro_modal_title: form.intro_modal_title,
+      intro_modal_body: form.intro_modal_body,
     };
     const res = await fetch(`/api/admin/campaigns/${id}`, {
       method: "PATCH",
@@ -302,6 +308,12 @@ export function CampaignDetailClient({ id }: { id: string }) {
                 <input type="checkbox" checked={Boolean(form.show_buyer_names)} onChange={(e) => setField("show_buyer_names", e.target.checked)} />
                 Exibir nome abreviado abaixo dos números reservados/confirmados
               </label>
+              <label className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-white p-4 font-bold text-[var(--brand-dark)] md:col-span-2">
+                <input type="checkbox" checked={Boolean(form.intro_modal_enabled)} onChange={(e) => setField("intro_modal_enabled", e.target.checked)} />
+                Exibir pop-up inicial de orientação na página pública
+              </label>
+              <div className="md:col-span-2"><label className="label">Título do pop-up inicial</label><input className="input" value={form.intro_modal_title || ""} onChange={(e) => setField("intro_modal_title", e.target.value)} /></div>
+              <div className="md:col-span-2"><label className="label">Texto do pop-up inicial</label><textarea className="input min-h-24" value={form.intro_modal_body || ""} onChange={(e) => setField("intro_modal_body", e.target.value)} /></div>
             </div>
             <button className="btn-primary mt-5" onClick={saveConfig} disabled={saving}>{saving ? "Salvando..." : "Salvar configurações"}</button>
           </section>

@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Home, Star } from "lucide-react";
+import { CheckCircle2, Home, MessageCircle, Star } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { formatMoneyFromCents } from "@/lib/format";
@@ -30,6 +30,28 @@ type TrackingData = {
 };
 
 export const revalidate = 0;
+
+function whatsappPhoneLink(phone?: string | null) {
+  const digits = String(phone || "").replace(/\D/g, "").slice(0, 14);
+  if (!digits) return "";
+  return digits.startsWith("55") ? digits : `55${digits}`;
+}
+
+function buildTrackingWhatsAppUrl(input: {
+  phone?: string | null;
+  name: string;
+  campaignTitle: string;
+  thankYouUrl: string;
+  trackUrl: string;
+  selectedNumbers: number[];
+  amountCents: number;
+}) {
+  const phone = whatsappPhoneLink(input.phone);
+  if (!phone) return "";
+  const numbers = input.selectedNumbers.length ? input.selectedNumbers.map((n) => String(n).padStart(2, "0")).join(", ") : "sem números";
+  const message = `Olá, ${input.name}! Sua participação na ação ${input.campaignTitle} foi registrada.\n\nNúmeros: ${numbers}\nValor: ${formatMoneyFromCents(input.amountCents)}\n\nPágina de obrigado:\n${input.thankYouUrl}\n\nAcompanhe a aprovação por este link:\n${input.trackUrl}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
 
 function normalizeColor(value: unknown, fallback: string) {
   if (typeof value !== "string") return fallback;
@@ -83,6 +105,18 @@ export default async function ThankYouPage({ params }: PageProps) {
   const logoUrl = data.client_logo_url || (isAmigosDePet ? "/images/amigos-de-pet-icon.jpg" : null);
 
   const selectedNumbers = Array.isArray(data.selected_numbers) ? data.selected_numbers : [];
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://impacto-no-controle.vercel.app";
+  const thankYouUrl = `${appUrl}/obrigado/${token}`;
+  const trackUrl = `${appUrl}/acompanhar/${token}`;
+  const whatsappTrackUrl = buildTrackingWhatsAppUrl({
+    phone: data.participant_phone,
+    name: data.participant_name,
+    campaignTitle: data.campaign_title,
+    thankYouUrl,
+    trackUrl,
+    selectedNumbers,
+    amountCents: data.amount_cents,
+  });
   const statusLabel: Record<string, string> = {
     awaiting_payment: "Aguardando pagamento e envio do comprovante",
     pending_approval: "Aguardando conferência do Pix",
@@ -176,6 +210,11 @@ export default async function ThankYouPage({ params }: PageProps) {
               >
                 Acompanhar participação
               </Link>
+              {whatsappTrackUrl ? (
+                <a className="btn-primary" href={whatsappTrackUrl} target="_blank" rel="noreferrer" style={{ background: primaryColor }}>
+                  <MessageCircle className="h-4 w-4" /> Enviar acompanhamento para meu WhatsApp
+                </a>
+              ) : null}
               <Link className="btn-secondary" href={`/acao/${data.campaign_slug}`}>Voltar para a campanha</Link>
             </div>
           </div>
